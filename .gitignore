@@ -1,0 +1,17 @@
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+lottery/data/epoch_smoke*/
+lottery/data/epoch_test/
+
+
+.env
+*.key
+__pycache__/
+.DS_Store
+LAUNCH_CHECKLIST.md
+
+# local-only (never published)
+private/
+lottery/scan/
+ops/GENESIS_V2.md

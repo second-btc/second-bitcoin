@@ -1,0 +1,79 @@
+{
+ "token": {
+  "name": "Second Bitcoin",
+  "symbol": "2BTC",
+  "decimals": 8,
+  "domain": "2BTC"
+ },
+ "epoch": {
+  "btc_blocks_unit": 2100,
+  "_epoch_length": "epoch k lasts 2,100·(k+1) Bitcoin blocks: 2,100, 4,200, 6,300 … ; epoch k is seeded by Bitcoin height H0 + 2,100·k(k+1)/2",
+  "epochs": 33,
+  "claim_delay_seconds": 86400,
+  "claim_seconds": 1260000,
+  "_claims": "open 24 h after the root; close two weeks later or when the next epoch opens, whichever first"
+ },
+ "piece": {
+  "min_coins": 5,
+  "max_coins": 50
+ },
+ "eligibility": {
+  "rule": "v4",
+  "chain": "base",
+  "chain_id": 8453,
+  "eoa_only": true,
+  "window_blocks": 630000,
+  "age_window_blocks": 630000,
+  "base_min_nonce": 10,
+  "base_max_nonce": 20000,
+  "l1_chain_id": 1,
+  "l1_min_nonce": 1,
+  "l1_rpc": "https://ethereum-rpc.publicnode.com",
+  "exclude": [
+   "0x0000000000000000000000000000000000000000"
+  ],
+  "_exclude_todo": "Placeholder — real exclusions (founder/operator, token, vesting, pool; lowercase) are supplied at genesis, not committed to this public file. v2 uses snapshot_v2.py --exclude; they are bound into the committed header.",
+  "_doc": [
+   "E_k = addresses a satisfying ALL of (whitepaper §4.1):",
+   "(1) a sent >= 1 transaction in Base blocks (B-W, B]   — the enumeration (sender scan); checked as nonce(a,B) > nonce(a,B-W)",
+   "(2) a is a regular wallet at B: no code, or an EIP-7702 delegation",
+   "(3) balance(a, B) >= min AND balance(a, B-W) >= min   — min = $100 of ETH at the snapshot's public rate (header min=<wei>, ethusd=<cents>): about a thousandth of a bitcoin, held through the whole epoch, not borrowed for a day",
+   "    epoch 0 only: balance_Base(a, B) + balance_L1(a, L) < max0   — max0 = $100,000 of ETH at genesis (header max0=<wei>); first draw for those holding less than about one bitcoin's worth",
+   "(4) nonce(a, B) >= base_min_nonce OR nonce_L1(a, L) >= l1_min_nonce ; and nonce(a, B) <= base_max_nonce   — has used the chain; is not infrastructure",
+   "(5) j >= 1 only: a was not drawn in any epoch i <= j-1   — one wallet, one payout; checked against the published winners files alone (no claim state, so no eth_call)",
+   "minus the exclusion list. B, W, L, exclusions (and H0, max0 for epoch 0) are in the snapshot header, which is hashed and committed.",
+   "Epoch 0: B = the deployment (genesis) block of the token — not chosen by the operator."
+  ],
+  "_exclude_note": "Filled BEFORE the genesis snapshot with: token contract, vesting contract, pool, founder, operator (lowercase). Bound into every committed snapshot header (exclude=...). Never changed afterwards.",
+  "exclude_past_recipients": true,
+  "_exclude_past_recipients": "ONE WALLET, ONE PAYOUT. From the second draw on (j >= 1): an address drawn in ANY earlier epoch (i <= j-1) is excluded from every later draw, whether or not it claimed. A wallet is therefore paid at most once and can receive at most MAX_PIECE (50) coins in the whole run. Verifiable from the published winners files alone — no claim state is read, so no eth_call and no waiting for a window to close. NOTE: this is a rule of the draw, enforced when the list is built and checkable by re-deriving it; the contract itself only caps a single claim at 50 coins and only prevents claiming twice within one epoch.",
+  "min_usd": 100,
+  "_min_usd": "floor: $100 of ETH (about a thousandth of a bitcoin) held both at B and at B-W; converted to wei at each snapshot from the public ETH-USD spot (Coinbase) and written into the header as min=<wei> together with the rate (ethusd=<cents>)",
+  "genesis_cap_usd": 100000,
+  "_genesis_cap_usd": "genesis only: Base balance at B + Ethereum balance at L below $100,000 of ETH (about one bitcoin), converted at the genesis snapshot and written as max0=<wei>",
+  "min_wei": "40900000000000000",
+  "_min_wei": "FALLBACK ONLY. ops/epoch.py always passes --min-wei computed from the live Coinbase spot at snapshot time, and verify.py asserts min×ethusd ≈ $100 from the header — this baked value is used only if snapshot.py is run standalone without --min-wei."
+ },
+ "snapshot_format": "line 1: '# 2BTC snapshot epoch=K block=B window=W l1block=L min=WEI ethusd=CENTS [h0=H max0=WEI] rule=v4 exclude=<comma-separated or none>'; then one lowercase 0x-address per line, sorted ascending (bytewise), LF newlines; commit = sha256(file bytes)",
+ "process": {
+  "_doc": "Operational rules a verifier checks (whitepaper §4.2). The operator's discretion is WHEN to snapshot (k >= 1), never the seed.",
+  "genesis_snapshot_block": "genesisBlock() of the contract (deployment block) — fixed, not chosen",
+  "snapshot_max_age_seconds": 43200,
+  "_snapshot_max_age": "for k >= 1, timestamp(B) and timestamp(L) must be within 12 h before the commit transaction",
+  "commit_lead_btc_blocks": 36,
+  "_commit_lead": "commit must land while Bitcoin tip <= H_k - 36 (≈ 6 h expected); the tooling refuses otherwise",
+  "commit_lead_seconds_ok": 14400,
+  "commit_lead_seconds_min": 7200,
+  "_verifier_tiers": "timestamp(H_k) - commitTime: >= 4 h OK; 2–4 h LATE (warning); < 2 h TAINTED (indistinguishable from a commit made after the block; Bitcoin timestamps are miner-set within ~2 h); <= 0 INVALID",
+  "genesis_h0_offset_blocks": 36,
+  "_genesis_h0": "for epoch 0 the operator sets H0 = (Bitcoin tip at COMMIT time) + 36, writes it into the header, hashes, and calls commitSnapshot(0, hash, H0); the contract fixes H0 forever (one-shot commit)",
+  "seed_confirmations": 6,
+  "_seed_confirmations": "open an epoch only once H_k has >= 6 confirmations; cross-check the hash with two independent sources; the Bitcoin chain is authoritative",
+  "claim_delay_seconds": 86400,
+  "_claim_delay": "claims open 24 h after a root is posted — time for anyone to recompute the draw",
+  "unclaimed": "when the next epoch opens, the previous epoch's unclaimed coins are halved: half burned, half added to the new epoch's cap",
+  "skip": "a tainted or impossible epoch may be skipped on-chain (skipEpoch), only after the genesis commit: it is a public re-roll — half of that epoch's coins are burned, half move to the next epoch; skipped epochs do not advance the founder's vesting",
+  "genesis_l1_block": "for epoch 0, L = the highest Ethereum block whose timestamp <= timestamp(B) (deterministic; not chosen)",
+  "_epoch_schedule": "H_k = H0 + 2,100·k(k+1)/2; the on-chain guard requires 4/5 of epoch k-1's nominal length between openings"
+ }
+}

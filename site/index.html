@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Second Bitcoin (2BTC)</title>
+<style>
+  :root {
+    --bg: #0c0d10; --panel: #15171c; --panel2: #1c1f26; --line: #262a33;
+    --fg: #e7e9ee; --muted: #8b909c; --accent: #f7931a; --good: #46c26a; --bad: #e5604f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.6 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 24px 20px 80px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0 28px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); color: #1a1206; font-weight: 800; display: grid; place-items: center; font-size: 18px; }
+  .brand h1 { font-size: 19px; margin: 0; letter-spacing: -.2px; }
+  .brand .sub { color: var(--muted); font-size: 12.5px; }
+  button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--panel2); color: var(--fg); padding: 9px 16px; border-radius: 10px; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .cta { background: var(--accent); color: #1a1206; border-color: var(--accent); font-weight: 600; }
+  .banner { background: linear-gradient(180deg, #1a1c22, #15171c); border: 1px solid var(--line); border-radius: 16px; padding: 28px; text-align: center; }
+  .banner h2 { margin: 0 0 8px; font-size: 22px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 4px 0 20px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  .stat .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+  .stat .v { font-size: 22px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .stat .s { color: var(--muted); font-size: 12px; }
+  .epoch-line { color: var(--muted); font-size: 13.5px; margin: -8px 0 22px; padding-left: 2px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; margin-bottom: 16px; }
+  .card h3 { margin: 0 0 4px; font-size: 16px; }
+  .card .tag { color: var(--accent); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .card p.d { color: var(--muted); font-size: 13.5px; margin: 6px 0 14px; }
+  .statusbox { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 14px; margin-bottom: 12px; min-height: 44px; }
+  .muted { color: var(--muted); } .good { color: var(--good); } .bad { color: var(--bad); }
+  .how { columns: 2; column-gap: 28px; color: var(--muted); font-size: 13.5px; }
+  .how h4 { color: var(--fg); font-size: 14px; margin: 0 0 4px; }
+  .how div { break-inside: avoid; margin-bottom: 14px; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 32px; border-top: 1px solid var(--line); padding-top: 16px; }
+  .links { display: flex; gap: 18px; flex-wrap: wrap; margin: 18px 0; font-size: 14px; }
+  @media (max-width: 640px) { .grid { grid-template-columns: repeat(2, 1fr); } .how { columns: 1; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo">2₿</div>
+      <div>
+        <h1>Second Bitcoin</h1>
+        <div class="sub">2BTC · a second chance at a fair start · on Base</div>
+      </div>
+    </div>
+    <button id="connect" class="cta">Connect wallet</button>
+  </header>
+
+  <!-- shown before the token address is set -->
+  <div id="prelaunch" class="banner" style="display:none">
+    <h2>Launching on Base</h2>
+    <p class="muted">210,000 coins, one hundredth of Bitcoin's supply, distributing themselves to wallets that already exist — a single broad genesis draw of ~90% of the supply, self-verified from one sealed seed. No sale, no registration, a founder share of 0.1%.</p>
+    <div class="links" style="justify-content:center">
+      <a id="wp-link" href="#">Whitepaper</a>
+      <a id="repo-link" href="#">Verify it yourself (source)</a>
+    </div>
+  </div>
+
+  <!-- shown once deployed -->
+  <div id="live">
+    <div class="grid">
+      <div class="stat"><div class="k">Supply</div><div class="v" id="s-supply">—</div><div class="s">2BTC</div></div>
+      <div class="stat"><div class="k">Distributed</div><div class="v" id="s-distributed">—</div><div class="s" id="s-distributed-sub">—</div></div>
+      <div class="stat"><div class="k">Burned</div><div class="v" id="s-burned">—</div><div class="s">unclaimed</div></div>
+      <div class="stat"><div class="k">Draw</div><div class="v" id="s-epoch">—</div><div class="s" id="s-status">—</div></div>
+    </div>
+    <div class="epoch-line" id="epoch-line">Reading the chain…</div>
+
+    <div class="card">
+      <div class="tag">Broad draw · 89.9%</div>
+      <h3>Did you win the genesis draw?</h3>
+      <p class="d">Every eligible wallet had the same chance. If your address was drawn, claim your coins — the contract checks your win itself, from the sealed seed and your address. Nothing was sent to a wallet that did not ask, and unclaimed coins are burned when the window closes.</p>
+      <div class="statusbox" id="draw-status"><span class="muted">Connect your wallet to check.</span></div>
+      <button id="draw-btn" class="cta" disabled>Claim draw</button>
+    </div>
+  </div>
+
+  <div class="how">
+    <div><h4>Fair start</h4>The draw goes only to wallets holding between 0.1 and 40 ETH (about one bitcoin's worth) — those who missed Bitcoin's early years, not the already-wealthy. Above the floor, wallet size buys no better odds.</div>
+    <div><h4>Self-verifying</h4>Each claim is recomputed on-chain from the sealed seed and your address. There is no posted winners list to trust and no operator after genesis.</div>
+    <div><h4>Sealed once</h4>A single random value, fixed at genesis after the eligible list is committed, decides the whole draw. Nobody — the author included — can choose who is drawn.</div>
+    <div><h4>Honest about the rest</h4>The eligible list is built by a public, reproducible rule; anyone can re-derive and compare it. Unclaimed coins are burned. The coin may be worth nothing.</div>
+  </div>
+
+  <div class="links">
+    <a id="wp-link2" href="#" onclick="this.href=document.getElementById('wp-link').href">Whitepaper</a>
+    <a id="repo-link2" href="#" onclick="this.href=document.getElementById('repo-link').href">Source & verifier</a>
+  </div>
+
+  <footer>
+    Not an investment offer, solicitation, or advice. 2BTC may be worth nothing; there is no promised value, no treasury, no presale. Availability may be restricted in some jurisdictions. Published under a pseudonym; a pseudonym is not a regulatory shield. Not affiliated with Bitcoin, Base, or Uniswap.
+  </footer>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
