@@ -50,9 +50,12 @@ senders is *complete* — no eligible address is missed. Candidate set :=
   W_l1 covers ~14 days of L1 blocks. (They are block *counts*, not wall-clock, so they are deterministic.)
 - *Builder note (result-identical, verifier unaffected):* the builder may enumerate ahead of time into a
   resumable per-sender highest-tx-block index and trim it to the window once B exists: `last_block` in
-  `(X−W, X]` ⇔ in the window; `≤ X−W` ⇔ out; `> X` (scan overshot B) is settled exactly by the nonce
-  difference `nonce(a, X) > nonce(a, X−W)` — the same membership fact from two consensus reads. A verifier
-  can always re-derive the set by scanning the window's blocks directly; both derivations are provably equal.
+  `(X−W, X]` ⇔ in the window; `≤ X−W` ⇔ out. The index MUST end exactly at the anchor block — an index
+  scanned past X is discarded and rebuilt (its rows past X lost their in-window history to the max-merge,
+  and no nonce arithmetic may substitute: post-Pectra, an EIP-7702 authorization bumps an account's nonce
+  without any sent transaction, so `nonce(X) > nonce(X−W)` does NOT imply the address sent in the window).
+  A verifier can always re-derive the set by scanning the window's blocks directly; both derivations are
+  provably equal. Membership comes only from `tx.from` appearances in scanned blocks — never from nonces.
 - The deduplicated, **lowercase-sorted** candidate dump is published as a committed artifact, and **its keccak256
   hash is bound into the header**, so reproduction does not depend on re-scanning a flaky RPC — a verifier can
   start from the same raw input and only needs to re-check the predicates.

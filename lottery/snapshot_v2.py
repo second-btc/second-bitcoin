@@ -228,11 +228,12 @@ def block_at_or_after_ts(rpc, ts):
 
 
 def block_at_or_before_ts(rpc, ts):
-    """Highest block with timestamp <= ts, within the finalized head. If ts is at/after the finalized tip, the
-    tip is the answer (the other chain can trail by seconds at the B boundary)."""
+    """Highest block with timestamp <= ts, within the finalized head. If the finalized tip has not yet
+    passed ts, the true answer might not be final — REFUSE rather than return a wall-clock-dependent
+    value (a lagging endpoint must never change a committed anchor; wait for finality instead)."""
     tip = finalized_number(rpc)
     if ts >= block_ts(rpc, tip):
-        return tip
+        raise RuntimeError(f"finalized tip ts <= target {ts}; wait for finality before anchoring")
     lo, hi = 0, tip
     while lo < hi:
         mid = (lo + hi + 1) // 2
@@ -305,7 +306,7 @@ def enumerate_senders(rpc, from_blk, to_blk):
 #   last_block >  X         ->  undecidable from the max alone -> resolved EXACTLY by the nonce-diff
 #                               fallback nonce(a, X) > nonce(a, X-W) (2 consensus reads; §2 of the spec)
 def open_scan_db(path):
-    db = sqlite3.connect(path)
+    db = sqlite3.connect(path, timeout=60)  # ride out transient file locks (backups, indexers)
     db.execute("CREATE TABLE IF NOT EXISTS senders(addr TEXT PRIMARY KEY, last_block INTEGER, last_nonce INTEGER)")
     db.execute("CREATE TABLE IF NOT EXISTS progress(k TEXT PRIMARY KEY, v INTEGER)")
     return db
@@ -316,7 +317,7 @@ def scan_to_db(rpc, db, from_blk, to_blk):
     restarts continue at the checkpoint; the max-merge upsert is idempotent and order-independent."""
     row = db.execute("SELECT v FROM progress WHERE k='next'").fetchone()
     if row is None:
-        db.execute("INSERT INTO progress VALUES('start',?)", (from_blk,))
+        db.execute("INSERT OR IGNORE INTO progress VALUES('start',?)", (from_blk,))
         nxt = from_blk
     else:
         nxt = max(from_blk, row[0])
@@ -338,16 +339,19 @@ def scan_to_db(rpc, db, from_blk, to_blk):
                     f = tx.get("from")
                     if f:
                         f = f.lower()
+                        n = tx.get("nonce")
+                        nv = to_int(n) if n is not None else -1
                         cur = rows.get(f)
-                        if cur is None or bn > cur[0]:
-                            # last_nonce is informational only (NEVER used in the predicate or the candidate
-                            # trim); some gateways omit "nonce" on OP-stack deposit txs — store -1 then.
-                            n = tx.get("nonce")
-                            rows[f] = (bn, to_int(n) if n is not None else -1)
+                        # last_nonce is INFORMATIONAL ONLY — never used in the predicate or the trim
+                        # (post-Pectra, EIP-7702 authorizations bump nonces without a sent tx, so no
+                        # count can be derived from tx nonces). In-block max kept for accuracy.
+                        if cur is None or bn > cur[0] or (bn == cur[0] and nv > cur[1]):
+                            rows[f] = (bn, nv)
         db.executemany(
             "INSERT INTO senders VALUES(?,?,?) ON CONFLICT(addr) DO UPDATE SET "
             "last_block=excluded.last_block, last_nonce=excluded.last_nonce "
-            "WHERE excluded.last_block>senders.last_block",
+            "WHERE excluded.last_block>senders.last_block "
+            "OR (excluded.last_block=senders.last_block AND excluded.last_nonce>senders.last_nonce)",
             [(a, b, n) for a, (b, n) in rows.items()])
         nxt = nums[-1] + 1
         db.execute("INSERT INTO progress VALUES('next',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v", (nxt,))
@@ -359,7 +363,11 @@ def scan_to_db(rpc, db, from_blk, to_blk):
 
 
 def senders_from_db(rpc, db, X, W):
-    """Candidate set over window (X-W, X] from a pre-scan DB — provably identical to enumerate_senders."""
+    """Candidate set over window (X-W, X] from a pre-scan DB — provably identical to enumerate_senders,
+    PROVIDED the DB ends exactly at X. A DB scanned past X is refused: rows past X lost their earlier
+    in-window last_block to the max-merge, and (post-Pectra) an EIP-7702 authorization bumps an account
+    nonce without any sent transaction, so no nonce arithmetic can settle membership — the only sound
+    derivations are direct block scans. Rescan into a DB targeted at --to-block X instead."""
     start_row = db.execute("SELECT v FROM progress WHERE k='start'").fetchone()
     next_row = db.execute("SELECT v FROM progress WHERE k='next'").fetchone()
     if not start_row or start_row[0] > X - W + 1:
@@ -368,15 +376,13 @@ def senders_from_db(rpc, db, X, W):
         missing_from = next_row[0] if next_row else X - W + 1
         print(f"  tail-scanning ({missing_from - 1}, {X}] to complete the window", file=sys.stderr)
         scan_to_db(rpc, db, missing_from, X)
-    in_win = {r[0] for r in db.execute(
+    over = db.execute("SELECT COUNT(*) FROM senders WHERE last_block > ?", (X,)).fetchone()[0]
+    if over:
+        raise RuntimeError(
+            f"{over} senders recorded past block {X}: this DB was scanned beyond the anchor and cannot "
+            f"give an exact window - rescan with --to-block {X} into a fresh DB")
+    return {r[0] for r in db.execute(
         "SELECT addr FROM senders WHERE last_block > ? AND last_block <= ?", (X - W, X))}
-    over = [r[0] for r in db.execute("SELECT addr FROM senders WHERE last_block > ?", (X,))]
-    if over:  # deploy landed while the scan ran past it: settle those few by nonce-diff (exact)
-        print(f"  nonce-diff recheck for {len(over)} senders past block {X}", file=sys.stderr)
-        n_hi = rpc.batch_call([("eth_getTransactionCount", [a, hexblk(X)]) for a in over])
-        n_lo = rpc.batch_call([("eth_getTransactionCount", [a, hexblk(X - W)]) for a in over])
-        in_win |= {a for a, h, l in zip(over, n_hi, n_lo) if to_int(h) > to_int(l)}
-    return in_win
 
 
 # ------------------------------------------------------------------ per-candidate predicate (§3)
@@ -401,10 +407,12 @@ CHUNK = 1000  # candidates per cross-candidate batch pass (bounds memory; each p
 
 
 def evaluate(base, eth, cand_sorted, anchors, exclusions):
-    """Cross-candidate batched: for each chunk of candidates, issue ALL of that chunk's Base reads (5/candidate)
-    and ALL its L1 reads (4/candidate) as batches, then apply the predicate. Result-identical to per-candidate;
-    ~one HTTP round-trip per 100 reads instead of per candidate — the difference between hours and minutes at
-    genesis scale. (batch_call still aborts loudly on any errored/missing read → no silent corruption.)"""
+    """Cross-candidate batched two-pass evaluation. EVERY value that reaches the predicate is a direct
+    consensus read — no derived nonces, no arithmetic stand-ins (post-Pectra EIP-7702 authorization
+    bumps make tx-nonce arithmetic unsound; the 2026-08-30 adversarial review removed that path).
+    Pass 1's balance-band drop is a NECESSARY condition of §3, so the result is identical to reading
+    all 9 values per candidate. The same code runs for build and verify.
+    (batch_call still aborts loudly on any errored/missing read → no silent corruption.)"""
     B, B2, L, L2 = anchors["B"], anchors["B2"], anchors["L"], anchors["L2"]
     Bage, Lage = anchors["B_age"], anchors["L_age"]
     excl = set(a.lower() for a in exclusions)
@@ -415,8 +423,7 @@ def evaluate(base, eth, cand_sorted, anchors, exclusions):
 
     def eval_chunk(start):
         cs = cand[start:start + CHUNK]
-        # PASS 1 — cheap balance-at-B pre-filter (2 reads/candidate). balance-at-B in [floor,cap) is a NECESSARY
-        # condition, so anything failing it is ineligible regardless of the other reads — result-identical.
+        # PASS 1 — balance-at-anchor band (2 reads/candidate; necessary condition of §3.1)
         p1b = base.batch_call([("eth_getBalance", [a, hexblk(B)]) for a in cs])
         p1e = eth.batch_call([("eth_getBalance", [a, hexblk(L)]) for a in cs])
         survivors = []
@@ -425,7 +432,7 @@ def evaluate(base, eth, cand_sorted, anchors, exclusions):
             if FLOOR_WEI <= bb0 + le0 < CAP_WEI:
                 survivors.append((a, bb0, le0))
         chunk_out = []
-        # PASS 2 — full eval only on survivors (7 more reads each)
+        # PASS 2 — the remaining 7 reads on survivors
         if survivors:
             addrs = [s[0] for s in survivors]
             b2 = base.batch_call([c for a in addrs for c in (
@@ -553,6 +560,11 @@ def main():
         hdr = json.load(open(a.header))
         if header_hash(hdr) != hdr.get("header_keccak"):
             sys.exit("FAIL: header_keccak does not match the header contents")
+        # the predicate uses THIS module's constants — refuse a header that claims different parameters
+        for key, want in (("rule", RULE_ID), ("floor_wei", FLOOR_WEI), ("cap_wei", CAP_WEI),
+                          ("min_age_s", MIN_AGE_S), ("min_txs", MIN_TXS), ("max_txs", MAX_TXS)):
+            if hdr.get(key) != want:
+                sys.exit(f"FAIL: header {key}={hdr.get(key)!r} != this verifier's {want!r}")
         cand = sorted(set(x.strip().lower() for x in open(a.candidates) if x.strip()))
         validate_addrs(cand, "candidates")
         if "0x" + keccak256("\n".join(cand).encode()).hex() != hdr["candidates_keccak"]:
