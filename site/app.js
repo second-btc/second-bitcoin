@@ -36,7 +36,7 @@ async function loadStats() {
   $("s-burned").textContent = coins(burned, 0);
   $("s-status").textContent = sealed ? "Live" : "Awaiting seal";
 
-  if (!sealed) { $("epoch-line").textContent = "The redistribution has not been sealed yet."; return; }
+  if (!sealed) { $("s-epoch").textContent = "Pending"; $("epoch-line").textContent = "The redistribution has not been sealed yet."; return; }
   const now = Math.floor(Date.now() / 1000);
   const closes = Number(start) + Number(claimWindow);
   const remaining = closes - now;
@@ -46,12 +46,17 @@ async function loadStats() {
     : `The claim window has closed; unclaimed coins are burned.`;
 }
 
-// ---- the draw
+// ---- the redistribution
 async function refreshDraw() {
   const box = $("draw-status");
-  if (!account) { box.innerHTML = `<span class="muted">Connect your wallet to check the draw.</span>`; return; }
+  if (!account) { box.innerHTML = `<span class="muted">Connect your wallet to check your share.</span>`; return; }
   box.innerHTML = `<span class="muted">Checking…</span>`;
   try {
+    const seed = await read("genesisSeed");
+    if (seed === "0x0000000000000000000000000000000000000000000000000000000000000000") {
+      box.innerHTML = `<span class="muted">The redistribution has not been sealed yet — shares are not decided. Check back after the seal.</span>`;
+      $("draw-btn").disabled = true; return;
+    }
     const [open, winner, claimed] = await Promise.all([read("drawOpen"), read("isDrawWinner", [account]), read("claimedDraw", [account])]);
     if (!winner) { box.innerHTML = `<b>No share.</b> <span class="muted">Your address is eligible but was not selected, or is not in the list.</span>`; $("draw-btn").disabled = true; return; }
     const piece = await read("drawPiece", [account]);

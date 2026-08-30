@@ -1,4 +1,4 @@
-// Minimal ABI for the SecondBitcoinV2 (one-shot broad lottery) functions the dashboard reads and calls.
+// Minimal ABI for the SecondBitcoinV2 (one-shot broad redistribution) functions the dashboard reads and calls.
 export const ABI = [
   // --- reads: supply / accounting
   { type: "function", stateMutability: "view", name: "totalSupply", inputs: [], outputs: [{ type: "uint256" }] },

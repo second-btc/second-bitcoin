@@ -54,7 +54,7 @@ python3 lottery/snapshot_v2.py verify \
 
 ```bash
 # contracts/lib/openzeppelin-contracts is a git submodule: clone with --recursive
-cd contracts && forge test --no-match-path 'test/*Fork*.t.sol'   # 46 local tests (v1 + v2), incl. invariants
+cd contracts && forge test --no-match-path 'test/*Fork*.t.sol'   # 46 local tests (all suites), incl. invariants
 forge test --match-path 'test/*Fork*.t.sol' --fork-url https://mainnet.base.org  # EIP-4788 + Uniswap on a real fork
 ```
 

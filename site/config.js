@@ -9,7 +9,7 @@ export const CONFIG = {
   explorer: "https://basescan.org",
   whitepaper: "whitepaper/second_bitcoin_en.html",
   repo: "https://github.com/second-btc/second-bitcoin",
-  // per-address Merkle proof for the draw: dataBase + "proof/" + lowercase(address) + ".json"
+  // per-address Merkle proof for the redistribution: dataBase + "proof/" + lowercase(address) + ".json"
   // → { "proof": ["0x..", ...] }   (absent file = address not in the eligible set)
   dataBase: "data/",
 };

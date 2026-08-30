@@ -120,3 +120,21 @@ candidates: 6903801
   ... 118000/6903800 evaluated (+11 eligible in chunk), 260934 reads used
   ... 119000/6903800 evaluated (+13 eligible in chunk), 263158 reads used
   ... 120000/6903800 evaluated (+12 eligible in chunk), 265354 reads used
+  ... 121000/6903800 evaluated (+7 eligible in chunk), 267501 reads used
+  ... 122000/6903800 evaluated (+9 eligible in chunk), 269662 reads used
+  ... 123000/6903800 evaluated (+11 eligible in chunk), 271837 reads used
+  ... 124000/6903800 evaluated (+16 eligible in chunk), 274103 reads used
+  ... 125000/6903800 evaluated (+12 eligible in chunk), 276285 reads used
+  ... 126000/6903800 evaluated (+11 eligible in chunk), 278460 reads used
+  ... 127000/6903800 evaluated (+9 eligible in chunk), 280663 reads used
+  ... 128000/6903800 evaluated (+9 eligible in chunk), 282894 reads used
+  ... 129000/6903800 evaluated (+21 eligible in chunk), 285153 reads used
+  ... 130000/6903800 evaluated (+17 eligible in chunk), 287370 reads used
+  ... 131000/6903800 evaluated (+21 eligible in chunk), 289664 reads used
+  ... 132000/6903800 evaluated (+12 eligible in chunk), 291874 reads used
+  ... 133000/6903800 evaluated (+8 eligible in chunk), 294063 reads used
+  ... 134000/6903800 evaluated (+5 eligible in chunk), 296189 reads used
+  ... 135000/6903800 evaluated (+11 eligible in chunk), 298350 reads used
+  ... 136000/6903800 evaluated (+22 eligible in chunk), 300609 reads used
+  ... 137000/6903800 evaluated (+14 eligible in chunk), 302819 reads used
+  ... 138000/6903800 evaluated (+13 eligible in chunk), 305064 reads used
