@@ -36,13 +36,13 @@ async function loadStats() {
   $("s-burned").textContent = coins(burned, 0);
   $("s-status").textContent = sealed ? "Live" : "Awaiting seal";
 
-  if (!sealed) { $("epoch-line").textContent = "The draw has not been sealed yet."; return; }
+  if (!sealed) { $("epoch-line").textContent = "The redistribution has not been sealed yet."; return; }
   const now = Math.floor(Date.now() / 1000);
   const closes = Number(start) + Number(claimWindow);
   const remaining = closes - now;
   $("s-epoch").textContent = remaining > 0 ? "Open" : "Closed";
   $("epoch-line").textContent = remaining > 0
-    ? `The draw is live. Claim window closes in ${fmtDur(remaining)}.`
+    ? `Claims are open. The window closes in ${fmtDur(remaining)}.`
     : `The claim window has closed; unclaimed coins are burned.`;
 }
 
@@ -53,10 +53,10 @@ async function refreshDraw() {
   box.innerHTML = `<span class="muted">Checking…</span>`;
   try {
     const [open, winner, claimed] = await Promise.all([read("drawOpen"), read("isDrawWinner", [account]), read("claimedDraw", [account])]);
-    if (!winner) { box.innerHTML = `<b>Not drawn.</b> <span class="muted">Your address is eligible but was not selected, or is not in the list.</span>`; $("draw-btn").disabled = true; return; }
+    if (!winner) { box.innerHTML = `<b>No share.</b> <span class="muted">Your address is eligible but was not selected, or is not in the list.</span>`; $("draw-btn").disabled = true; return; }
     const piece = await read("drawPiece", [account]);
     if (claimed) { box.innerHTML = `<b class="good">Claimed.</b> You received ${coins(piece)} 2BTC.`; $("draw-btn").disabled = true; return; }
-    box.innerHTML = `<b class="good">You won ${coins(piece)} 2BTC.</b>` + (open ? "" : ` <span class="bad">The claim window is closed.</span>`);
+    box.innerHTML = `<b class="good">Your share: ${coins(piece)} 2BTC.</b>` + (open ? "" : ` <span class="bad">The claim window is closed.</span>`);
     $("draw-btn").disabled = !open;
   } catch (e) { box.innerHTML = `<span class="bad">${(e.shortMessage || e.message).slice(0, 140)}</span>`; }
 }

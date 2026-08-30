@@ -60,7 +60,7 @@
   <!-- shown before the token address is set -->
   <div id="prelaunch" class="banner" style="display:none">
     <h2>Launching on Base</h2>
-    <p class="muted">210,000 coins, one hundredth of Bitcoin's supply, distributing themselves to wallets that already exist — a single broad genesis draw of ~90% of the supply, self-verified from one sealed seed. No sale, no registration, a founder share of 0.1%.</p>
+    <p class="muted">210,000 coins, one hundredth of Bitcoin's supply, distributing themselves to wallets that already exist — a single genesis redistribution of ~90% of the supply, self-verified from one sealed seed. No sale, no registration, a founder share of 0.1%.</p>
     <div class="links" style="justify-content:center">
       <a id="wp-link" href="whitepaper/second_bitcoin_en.html">Whitepaper</a>
       <a id="repo-link" href="https://github.com/second-btc/second-bitcoin">Verify it yourself (source)</a>
@@ -73,23 +73,23 @@
       <div class="stat"><div class="k">Supply</div><div class="v" id="s-supply">—</div><div class="s">2BTC</div></div>
       <div class="stat"><div class="k">Distributed</div><div class="v" id="s-distributed">—</div><div class="s" id="s-distributed-sub">—</div></div>
       <div class="stat"><div class="k">Burned</div><div class="v" id="s-burned">—</div><div class="s">unclaimed</div></div>
-      <div class="stat"><div class="k">Draw</div><div class="v" id="s-epoch">—</div><div class="s" id="s-status">—</div></div>
+      <div class="stat"><div class="k">Redistribution</div><div class="v" id="s-epoch">—</div><div class="s" id="s-status">—</div></div>
     </div>
     <div class="epoch-line" id="epoch-line">Reading the chain…</div>
 
     <div class="card">
-      <div class="tag">Broad draw · 89.9%</div>
-      <h3>Did you win the genesis draw?</h3>
-      <p class="d">Every eligible wallet had the same chance. If your address was drawn, claim your coins — the contract checks your win itself, from the sealed seed and your address. Nothing was sent to a wallet that did not ask, and unclaimed coins are burned when the window closes.</p>
+      <div class="tag">Redistribution · 89.9%</div>
+      <h3>Does your wallet hold a share?</h3>
+      <p class="d">Every eligible wallet had the same chance. If your address was selected, claim your coins — the contract checks your share itself, from the sealed seed and your address. Nothing was sent to a wallet that did not ask, and unclaimed coins are burned when the window closes.</p>
       <div class="statusbox" id="draw-status"><span class="muted">Connect your wallet to check.</span></div>
-      <button id="draw-btn" class="cta" disabled>Claim draw</button>
+      <button id="draw-btn" class="cta" disabled>Claim</button>
     </div>
   </div>
 
   <div class="how">
-    <div><h4>Fair start</h4>The draw goes only to wallets holding between 0.1 and 40 ETH (about one bitcoin's worth) — those who missed Bitcoin's early years, not the already-wealthy. Above the floor, wallet size buys no better odds.</div>
-    <div><h4>Self-verifying</h4>Each claim is recomputed on-chain from the sealed seed and your address. There is no posted winners list to trust and no operator after genesis.</div>
-    <div><h4>Sealed once</h4>A single random value, fixed at genesis after the eligible list is committed, decides the whole draw. Nobody — the author included — can choose who is drawn.</div>
+    <div><h4>Fair start</h4>The redistribution goes only to wallets holding between 0.1 and 40 ETH (about one bitcoin's worth) — those who missed Bitcoin's early years, not the already-wealthy. Above the floor, wallet size buys no better odds.</div>
+    <div><h4>Self-verifying</h4>Each claim is recomputed on-chain from the sealed seed and your address. There is no posted recipients list to trust and no operator after genesis.</div>
+    <div><h4>Sealed once</h4>A single random value, fixed at genesis after the eligible list is committed, decides every share. Nobody — the author included — can choose who receives.</div>
     <div><h4>Honest about the rest</h4>The eligible list is built by a public, reproducible rule; anyone can re-derive and compare it. Unclaimed coins are burned. The coin may be worth nothing.</div>
   </div>
 

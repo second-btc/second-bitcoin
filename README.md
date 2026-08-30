@@ -1,17 +1,16 @@
 # Second Bitcoin (2BTC) — a second chance at a fair start
 
-210,000 coins (1/100 of Bitcoin), 8 decimals, on Base. Distribution is a **single broad lottery at genesis**:
+210,000 coins (1/100 of Bitcoin), 8 decimals, on Base. Distribution is a **single act of redistribution at genesis**:
 about 90% of the supply (188,790 coins) goes to wallets that already exist, drawn at random from one sealed
-seed. No registration, no presale, no treasury. Each wallet's win and amount are a pure function of the sealed
-seed and its own address, so recipients **claim for themselves** and there is no winners' list to trust. The
+seed. No registration, no presale, no treasury. Each wallet's share and amount are a pure function of the sealed
+seed and its own address, so recipients **claim for themselves** and there is no recipients' list to trust. The
 founder keeps 0.1% (210 coins), disclosed, the locked part released over two years behind everyone else. After
 the genesis seal, no operator ever acts.
 
 Read the whitepaper: [English](whitepaper/second_bitcoin_en.md) · Dashboard / claim page:
 https://second-btc.github.io/second-bitcoin/
 
-> This repository is the v2 (one-shot broad lottery) design. The older v1 files (33-epoch halving draw) are kept
-> in-tree for history — see the `*V2` / `_v2` names below for the live design.
+> The `*V2` / `_v2` names below mark the released design; older files are kept in-tree for history.
 
 
 ## Genesis (Base mainnet, 2026-08-30)
@@ -21,11 +20,11 @@ https://second-btc.github.io/second-bitcoin/
 - Pool (Uniswap v3, single-sided): `0xe052A3ac23A0F1485aCF3c04DeEC5F51e79eC522` · Vesting: `0x9328F70aCCa80D99F580E1D9170D9C03d4b88D90`
 - Eligible-set build in progress; `commitSet` + `seal` follow. Reproduce with `lottery/snapshot_v2.py`.
 
-## Layout (v2)
+## Layout
 
 | path | what |
 |---|---|
-| `contracts/src/SecondBitcoinV2.sol` | ERC-20 + one-shot self-verify lottery + single-sided pool seeding |
+| `contracts/src/SecondBitcoinV2.sol` | ERC-20 + one-shot self-verifying redistribution + single-sided pool seeding |
 | `contracts/src/LauncherV2.sol` | genesis in one atomic transaction (deploy + seed pool) |
 | `contracts/src/FounderVestingV2.sol` | founder's locked coins, linear over 2 years from seal |
 | `contracts/script/DeployV2.s.sol` | deploy script (env-driven) |
@@ -35,7 +34,7 @@ https://second-btc.github.io/second-bitcoin/
 | `ops/RUNBOOK_V2.md` | genesis-day runbook (deploy → snapshot → commit → seal → claim) |
 | `ops/seal_timestamp.py` | computes a valid, block-aligned `sealTimestamp` for `commitSet`/`seal` |
 | `ops/pool_params.py` | Uniswap v3 price/tick math for the single-sided pool |
-| `site/` | static claim page (viem): draw status, "did I win?", claim, proofs |
+| `site/` | static claim page (viem): redistribution status, "do I hold a share?", claim, proofs |
 
 ## Verify the eligible set yourself
 

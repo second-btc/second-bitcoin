@@ -1,16 +1,16 @@
 # Second Bitcoin: A Second Chance at a Fair Start
 
 *secondbtc*
-*v2 — August 2026 · one-shot broad lottery*
+*August 2026 · a one-time redistribution*
 
 
 **Abstract.** Bitcoin opened a way to issue coins through mining. It took issuance away from any central institution, but left distribution to a mining race. To enter that race you needed information and equipment. So today, for almost everyone, the only way to obtain bitcoin is to buy it from someone who was there earlier. We open that distribution over again — with a coin that distributes itself.
 
-It is issued to people who already hold wallets, on a principle of equality, and the only thing a recipient has to do is claim. Total supply is 210,000 coins — one hundredth of Bitcoin's. It is minted once at genesis, with no function to mint more. 2BTC likewise does not decide who will hold it: a sealed seed and randomness set each share, so no one can choose the winners. What it does is open the same odds to wallets that mining could never give a place to. This equality is per wallet, not per person; that capital can create several qualifying wallets to enter more often is a limit we set out in §1.
+It is issued to people who already hold wallets, on a principle of equality, and the only thing a recipient has to do is claim. Total supply is 210,000 coins — one hundredth of Bitcoin's. It is minted once at genesis, with no function to mint more. 2BTC likewise does not decide who will hold it: a sealed seed and randomness set each share, so no one can choose the recipients. What it does is open the same odds to wallets that mining could never give a place to. This equality is per wallet, not per person; that capital can create several qualifying wallets to enter more often is a limit we set out in §1.
 
-Distribution is a **single broad lottery at genesis**. About 90% of the supply is allocated broadly, by one random seed, to wallets that already exist. There is no registration and no sale.
+Distribution is a **single act of redistribution at genesis**. About 90% of the supply is allocated broadly, by one random seed, to wallets that already exist. There is no registration and no sale.
 
-Each wallet's allocation and share are a function of the sealed seed and that wallet's own address. The contract computes and verifies it at the moment of claim, so there is no winners' list to publish in advance and no publisher to trust. Trust is required in one place only: who builds the eligibility list, and how. Because the rule, its input data, and the program that computes it are all public, anyone can re-run the same computation and compare it against the list we posted; an address outside the rule shows up in that comparison. The author keeps one tenth of one percent — 210 coins, most of it locked and released over 2 years after the seal.
+Each wallet's allocation and share are a function of the sealed seed and that wallet's own address. The contract computes and verifies it at the moment of claim, so there is no recipients' list to publish in advance and no publisher to trust. Trust is required in one place only: who builds the eligibility list, and how. Because the rule, its input data, and the program that computes it are all public, anyone can re-run the same computation and compare it against the list we posted; an address outside the rule shows up in that comparison. The author keeps one tenth of one percent — 210 coins, most of it locked and released over 2 years after the seal.
 
 ## 1. Introduction
 
@@ -18,7 +18,7 @@ Bitcoin's paper begins with the problem of trust. This one begins with the next 
 
 Bitcoin issues coins as a reward for mining. Mining is open in the sense that it turns no one away. But to actually enter, you needed information and equipment. In 2009 a single laptop could mine fifty coins a day — yet even then the threshold was whether you knew how to mine and had the machine to do it. In 2026 a laptop earns nothing. Mining has become the province of industrial rigs on cheap power, and a single coin costs more than most people earn in a month. Now the threshold is whether you have the equipment, and if not, whether you have the money. At every point, the door was shut to anyone with neither information, nor equipment, nor capital.
 
-Instead, we leave who receives what not to any hand but to a rule sealed on the blockchain. Between a lower and an upper bound of eligibility, every wallet has the same chance, and a random draw sets each one's share. This equality is per wallet, not per person. Someone with capital can create several wallets above the floor to enter more often. Even so, no wallet has better odds than another, and the eligibility floor makes preparing those wallets a matter of capital, not a free script. The eligibility rule is also fixed and published at issuance without prior notice, so it is hard to prepare wallets aimed at the criteria in advance.
+Instead, we leave who receives what not to any hand but to a rule sealed on the blockchain. Between a lower and an upper bound of eligibility, every wallet has the same chance, and randomness sets each one's share. This equality is per wallet, not per person. Someone with capital can create several wallets above the floor to enter more often. Even so, no wallet has better odds than another, and the eligibility floor makes preparing those wallets a matter of capital, not a free script. The eligibility rule is also fixed and published at issuance without prior notice, so it is hard to prepare wallets aimed at the criteria in advance.
 
 ## 2. Distribution
 
@@ -26,14 +26,14 @@ One coin divides into a hundred million smallest units. In a nod to Bitcoin's sa
 
 | Allocation | Coins | Share | Method |
 |---|---:|---:|---|
-| **Broad lottery** | 188,790 | 89.9% | fixed genesis list · self-verifying draw · 1–50 per wallet, skewed |
+| **Redistribution** | 188,790 | 89.9% | fixed genesis list · self-verifying allocation · 1–50 per wallet, skewed |
 | Public liquidity | 21,000 | 10.0% | single-sided Uniswap v3 · no ETH · position token burned |
 | Founder, liquid | 50 | 0.024% | genesis reward |
 | Founder, locked | 160 | 0.076% | released linearly over 2 years after the seal |
 
-Distribution happens once, at genesis. About 90% of the supply is allocated by a single broad lottery; the rest is liquidity and the founder's share. This 89.9% is a budget, though: the number of winners is set so the sum of the random pieces stays under it, so the amount actually distributed is somewhat less, and whatever is not distributed, along with whatever is not claimed, is burned.
+Distribution happens once, at genesis. About 90% of the supply is allocated by a single redistribution; the rest is liquidity and the founder's share. This 89.9% is a budget, though: the number of recipients is set so the sum of the random pieces stays under it, so the amount actually distributed is somewhat less, and whatever is not distributed, along with whatever is not claimed, is burned.
 
-## 3. The broad lottery
+## 3. The redistribution
 
 ### 3.1 Who is eligible — and why
 
@@ -47,14 +47,14 @@ Eligibility is fixed once and forever, from the on-chain state at snapshot block
 
 **Why the bounds:**
 - **Floor 0.1 ETH** — filters out the empty wallets that can be minted at random. It makes filling the list with sybil addresses a matter of capital, not a script.
-- **Ceiling 40 ETH, roughly 1 BTC** — the reason this coin exists. Excluding the already-large wallets widens the set of first recipients and keeps the start from concentrating in a few hands. The entire lottery goes only to wallets holding less than 40 ETH.
+- **Ceiling 40 ETH, roughly 1 BTC** — the reason this coin exists. Excluding the already-large wallets widens the set of first recipients and keeps the start from concentrating in a few hands. The entire redistribution goes only to wallets holding less than 40 ETH.
 - **Age and history** — selects active, real-use wallets. Requiring an old account and months of activity screens out wallets thrown together to chase the drop. This blocks sybils and, at the same time, makes it hard to suspect that the founder — or anyone — prepared wallets in advance: such a wallet would have had to be genuinely used for over a year, and the rules are revealed only at issuance. And because abandoned wallets never claim and so end in burn, this threshold also raises the claim rate.
 
 Because eligibility is set directly in ETH balances, no exchange rate or oracle is needed. Anyone can check it from on-chain ETH balances alone, and the question of "which price was used" never arises as a point of trust.
 
-### 3.2 The self-verifying draw
+### 3.2 The self-verifying allocation
 
-A claimant submits only one proof: that their address is in the eligibility list. It is a Merkle proof — a mathematical demonstration that a single address is included, without re-posting the whole list. The contract then computes a fixed hash, keccak256, from the sealed seed and that address, and decides for itself whether the address won and how many coins it takes. Because each wallet's result is independent of the others, the contract only ever computes for the one claimant. There is no winners' list to publish in advance, and no publisher to trust.
+A claimant submits only one proof: that their address is in the eligibility list. It is a Merkle proof — a mathematical demonstration that a single address is included, without re-posting the whole list. The contract then computes a fixed hash, keccak256, from the sealed seed and that address, and decides for itself whether the address has a share and how many coins it takes. Because each wallet's result is independent of the others, the contract only ever computes for the one claimant. There is no recipients' list to publish in advance, and no publisher to trust.
 
 This trustlessness has a boundary. It holds for "allocation and share," but not for "the construction of the eligibility list." The list is computed solely from the on-chain state of the public block *B* and the fixed criteria of §3.1, with no room for the founder to change it at will — but the party who actually performs that computation and posts it on-chain is the founder. The seed is sealed after the list is committed, from L1 beacon randomness at a time designated at the moment of commitment. So the seal cannot be re-rolled by changing its timing, and planting an address in the list cannot bias it toward winning: a planted address wins with the same odds as anyone else.
 
@@ -62,9 +62,9 @@ If, however, the person building the list is dishonest, they can quietly insert 
 
 ### 3.3 Pieces — 1 to 50, mean about 7, skewed
 
-Winners do not all receive the same number. Instead of a uniform draw, with its mean of 25.5, pieces are drawn from a heavily right-skewed distribution: mostly 1 to 5, rarely up to 50, with a mean of about 7. The distribution and its probabilities are published.
+Recipients do not all receive the same number. Instead of a uniform split, with its mean of 25.5, pieces are drawn from a heavily right-skewed distribution: mostly 1 to 5, rarely up to 50, with a mean of about 7. The distribution and its probabilities are published.
 
-The lottery budget is 188,790 coins. The number of winners is set, with a safety margin, so the sum of the pieces does not exceed that budget — roughly twenty-some thousand wallets win, with the exact number fixed when the eligible list is committed and the count of eligible wallets *N* is known. Because each piece is computed from its own address alone, the amount actually distributed is somewhat below the budget, and that difference, along with whatever is not claimed, is burned. If eligible wallets outnumber what the budget can hold, winners are drawn from among them; if fewer, every eligible wallet receives.
+The redistribution budget is 188,790 coins. The number of recipients is set, with a safety margin, so the sum of the pieces does not exceed that budget — roughly twenty-some thousand wallets receive, with the exact number fixed when the eligible list is committed and the count of eligible wallets *N* is known. Because each piece is computed from its own address alone, the amount actually distributed is somewhat below the budget, and that difference, along with whatever is not claimed, is burned. If eligible wallets outnumber what the budget can hold, recipients are drawn at random from among them; if fewer, every eligible wallet receives.
 
 ## 4. Network
 
@@ -72,7 +72,7 @@ A standard ERC-20 on **Base**, an Ethereum L2. A claim costs about a cent, and E
 
 ## 5. Incentives
 
-The author's share is one tenth of one percent — **210 coins** — disclosed here. Of these, **50 are liquid** at genesis, used for testing and demonstration; the other **160 are locked**, released linearly over 2 years from the seal. While the public lottery distributes within its claim window, the founder's locked share unlocks slowly behind it. After genesis the founder has no on-chain powers — no minting, no clawback, no interference in the draw.
+The author's share is one tenth of one percent — **210 coins** — disclosed here. Of these, **50 are liquid** at genesis, used for testing and demonstration; the other **160 are locked**, released linearly over 2 years from the seal. While the public redistribution completes within its claim window, the founder's locked share unlocks slowly behind it. After genesis the founder has no on-chain powers — no minting, no clawback, no interference in the allocation.
 
 ## 6. Liquidity
 
@@ -88,11 +88,11 @@ Because distribution is a single event at genesis, there are no epochs and no cl
 
 ## 8. Privacy
 
-This coin is **permissionless** in the sense that there is no account to register or connect. But that is not confidentiality — not anonymity. Because the eligibility list and the sealed seed are both public, anyone can compute, before a claim, whether each eligible address won and for how much. And the mere fact that an address is on the list reveals that at the snapshot it was a wallet holding between 0.1 and 40 ETH, active for over a year. A participant should weigh that this openness can become a target-and-phishing risk. It is the intrinsic cost of on-chain self-verification and cannot be designed away. The author publishes under a pseudonym.
+This coin is **permissionless** in the sense that there is no account to register or connect. But that is not confidentiality — not anonymity. Because the eligibility list and the sealed seed are both public, anyone can compute, before a claim, whether each eligible address was selected and for how much. And the mere fact that an address is on the list reveals that at the snapshot it was a wallet holding between 0.1 and 40 ETH, active for over a year. A participant should weigh that this openness can become a target-and-phishing risk. It is the intrinsic cost of on-chain self-verification and cannot be designed away. The author publishes under a pseudonym.
 
 ## 9. Conclusion
 
-Bitcoin took trust out of issuance. This coin takes it out of distribution. With a single sealed random draw, it opens one broad lottery to wallets that already exist. The rules are fixed before the first coin moves; the founder's share is small, disclosed, and behind everyone else's. There is no treasury, no sale, no promise. Each wallet's share is a function of the sealed seed and that wallet's own address, and anyone can verify it. From a starting line that mining had already divided, this opens to the wallets left behind the same odds at a second start. Whether it is worth anything is not for this paper to say.
+Bitcoin took trust out of issuance. This coin takes it out of distribution. With a single sealed random value, it opens one broad redistribution to wallets that already exist. The rules are fixed before the first coin moves; the founder's share is small, disclosed, and behind everyone else's. There is no treasury, no sale, no promise. Each wallet's share is a function of the sealed seed and that wallet's own address, and anyone can verify it. From a starting line that mining had already divided, this opens to the wallets left behind the same odds at a second start. Whether it is worth anything is not for this paper to say.
 
 ---
 
@@ -101,8 +101,8 @@ Bitcoin took trust out of issuance. This coin takes it out of distribution. With
 | | |
 |---|---|
 | Supply | 210,000 coins (8 decimals), minted at genesis, no mint function |
-| Allocation | broad lottery 188,790 (89.9%) · liquidity 21,000 (10%) · founder 210 (0.1%) |
-| Lottery | one-shot · fixed-list self-verify · 1–50 skewed, mean ~7 · ~20-some thousand wallets within the 188,790 budget · eligibility: 0.1–40 ETH, account age ≥12 months, activity history, no price oracle · undistributed and unclaimed burned |
+| Allocation | redistribution 188,790 (89.9%) · liquidity 21,000 (10%) · founder 210 (0.1%) |
+| Redistribution | one-shot · fixed-list self-verify · 1–50 skewed, mean ~7 · ~20-some thousand wallets within the 188,790 budget · eligibility: 0.1–40 ETH, account age ≥12 months, activity history, no price oracle · undistributed and unclaimed burned |
 | Claiming | open ≥180 days from the seal · unclaimed burned in full · no claim-on-behalf, no dead-man switch, no operator |
 | Seed | sealed after the list commit (L1 beacon randomness at a time designated at commit) · cannot be re-rolled by seal timing · no human involvement after |
 | Liquidity | single-sided v3, P₀ published, LP burned, non-withdrawable, no protocol bid |
