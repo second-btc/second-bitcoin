@@ -1,7 +1,7 @@
 # Second Bitcoin: A Second Chance at a Fair Start
 
-*secondbtc (pseudonym)*
-*v2 draft — August 2026 · one-shot broad lottery*
+*secondbtc*
+*v2 — August 2026 · one-shot broad lottery*
 
 
 **Abstract.** Bitcoin opened a way to issue coins through mining. It took issuance away from any central institution, but left distribution to a mining race. To enter that race you needed information and equipment. So today, for almost everyone, the only way to obtain bitcoin is to buy it from someone who was there earlier. We open that distribution over again — with a coin that distributes itself.
@@ -58,13 +58,13 @@ A claimant submits only one proof: that their address is in the eligibility list
 
 This trustlessness has a boundary. It holds for "allocation and share," but not for "the construction of the eligibility list." The list is computed solely from the on-chain state of the public block *B* and the fixed criteria of §3.1, with no room for the founder to change it at will — but the party who actually performs that computation and posts it on-chain is the founder. The seed is sealed after the list is committed, from L1 beacon randomness at a time designated at the moment of commitment. So the seal cannot be re-rolled by changing its timing, and planting an address in the list cannot bias it toward winning: a planted address wins with the same odds as anyone else.
 
-If, however, the person building the list is dishonest, they can quietly insert wallets they control that genuinely meet the criteria. Such wallets have broken no rule, so they do receive allocations. The total issuance is unchanged, but that share goes to the author rather than to someone else — real coins. There is, in principle, no cap on how much can be planted this way. The defense is reproducibility. Because the rule, the inputs, and the computing program are published as-is, verification is not a new judgment but a re-run of the same computation: a third party runs the program again to produce the canonical list and compares it, hash for hash, against the committed one. An address outside the rule shows up in that comparison. Sampling alone can miss a few planted addresses, so the comparison must be exhaustive — and someone must actually carry it out. The rule and the snapshot block *B* are the founder's to set, but both are published and fixed before *B*'s state is revealed, so choosing values to fit one's own wallets after seeing the outcome is blocked; the only room left is the case above, of placing already-held qualifying wallets into the list. We draw the boundary of trust-minimization here, plainly.
+If, however, the person building the list is dishonest, they can quietly insert wallets they control that genuinely meet the criteria. Such wallets have broken no rule, so they do receive allocations. The total issuance is unchanged, but that share goes to the author rather than to someone else — real coins. There is, in principle, no cap on how much can be planted this way. The defense is reproducibility. Because the rule, the inputs, and the computing program are published as-is, verification is not a new judgment but a re-run of the same computation: a third party runs the program again to produce the canonical list and compares it, hash for hash, against the committed one. An address outside the rule shows up in that comparison. Sampling alone can miss a few planted addresses, so the comparison must be exhaustive — and someone must actually carry it out. The eligibility rule is fixed before deployment and lives in the repository's history, and *B* is set by the block in which the deployment transaction lands. By the time the rules are public, both balance legs are already history — so dressing up wallets to fit the rule after reading it is blocked; the only room left is the case above, of placing already-held qualifying wallets into the list. We draw the boundary of trust-minimization here, plainly.
 
 ### 3.3 Pieces — 1 to 50, mean about 7, skewed
 
 Winners do not all receive the same number. Instead of a uniform draw, with its mean of 25.5, pieces are drawn from a heavily right-skewed distribution: mostly 1 to 5, rarely up to 50, with a mean of about 7. The distribution and its probabilities are published.
 
-The lottery budget is 188,790 coins. The number of winners is set, with a safety margin, so the sum of the pieces does not exceed that budget — roughly twenty-some thousand wallets win, with the exact number fixed at genesis once the count of eligible wallets *N* is known. Because each piece is computed from its own address alone, the amount actually distributed is somewhat below the budget, and that difference, along with whatever is not claimed, is burned. If eligible wallets outnumber what the budget can hold, winners are drawn from among them; if fewer, every eligible wallet receives.
+The lottery budget is 188,790 coins. The number of winners is set, with a safety margin, so the sum of the pieces does not exceed that budget — roughly twenty-some thousand wallets win, with the exact number fixed when the eligible list is committed and the count of eligible wallets *N* is known. Because each piece is computed from its own address alone, the amount actually distributed is somewhat below the budget, and that difference, along with whatever is not claimed, is burned. If eligible wallets outnumber what the budget can hold, winners are drawn from among them; if fewer, every eligible wallet receives.
 
 ## 4. Network
 
@@ -82,7 +82,7 @@ The only market the author opens is this single-sided pool. Peer-to-peer trades,
 
 ## 7. Claiming
 
-A recipient claims **for themselves, from their own address**. The claim window stays open for **at least 180 days** from the seal (genesis), so no one misses it. When the window closes, the unclaimed remainder is **burned in full**. There is no mechanism to claim on someone's behalf. If many wallets are abandoned, a substantial part may burn — this is by design: what is burned is not redistributed, it simply reduces the remaining supply.
+A recipient claims **for themselves, from their own address**. The claim window stays open for **at least 180 days** from the seal, so no one misses it. When the window closes, the unclaimed remainder is **burned in full**. There is no mechanism to claim on someone's behalf. If many wallets are abandoned, a substantial part may burn — this is by design: what is burned is not redistributed, it simply reduces the remaining supply.
 
 Because distribution is a single event at genesis, there are no epochs and no clock. After the seal, nothing about this coin needs a person or any outside data to keep running.
 
@@ -104,7 +104,7 @@ Bitcoin took trust out of issuance. This coin takes it out of distribution. With
 | Allocation | broad lottery 188,790 (89.9%) · liquidity 21,000 (10%) · founder 210 (0.1%) |
 | Lottery | one-shot · fixed-list self-verify · 1–50 skewed, mean ~7 · ~20-some thousand wallets within the 188,790 budget · eligibility: 0.1–40 ETH, account age ≥12 months, activity history, no price oracle · undistributed and unclaimed burned |
 | Claiming | open ≥180 days from the seal · unclaimed burned in full · no claim-on-behalf, no dead-man switch, no operator |
-| Seed | sealed at genesis (L1 beacon randomness at a time designated at commit) · cannot be re-rolled by seal timing · no human involvement after |
+| Seed | sealed after the list commit (L1 beacon randomness at a time designated at commit) · cannot be re-rolled by seal timing · no human involvement after |
 | Liquidity | single-sided v3, P₀ published, LP burned, non-withdrawable, no protocol bid |
 | Founder | 210 = 0.1%, locked and released linearly over 2 years after the seal |
 
