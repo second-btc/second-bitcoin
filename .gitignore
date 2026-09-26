@@ -15,3 +15,6 @@ LAUNCH_CHECKLIST.md
 private/
 lottery/scan/
 ops/GENESIS_V2.md
+lottery/data_v2/
+lottery/data_v2_ckpt.txt
+lottery/data_v2_eval.log

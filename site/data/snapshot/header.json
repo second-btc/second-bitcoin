@@ -1,0 +1,33 @@
+{
+ "rule": "2btc-v2-oneshot",
+ "T_B": 1788020937,
+ "B": 50615795,
+ "B2": 50010995,
+ "L": 25862106,
+ "L2": 25761643,
+ "B_age": 34847795,
+ "L_age": 23247978,
+ "ts_B": 1788020937,
+ "ts_B2": 1786811337,
+ "ts_L": 1788020927,
+ "ts_L2": 1786811327,
+ "ts_Bage": 1756484937,
+ "ts_Lage": 1756484927,
+ "W_base": 630000,
+ "W_l1": 100800,
+ "floor_wei": 100000000000000000,
+ "cap_wei": 40000000000000000000,
+ "min_age_s": 31536000,
+ "min_txs": 20,
+ "max_txs": 20000,
+ "exclusions": [
+  "0x292198f6aceb505ebad96ba7654bae70b57c0fdd",
+  "0x9328f70acca80d99f580e1d9170d9c03d4b88d90",
+  "0xcabf0054e960df6dfe187ee94ff328a3e92648d5",
+  "0xe052a3ac23a0f1485acf3c04deec5f51e79ec522"
+ ],
+ "candidates_keccak": "0x71925bc1fc00e14096d890e52d4ded2cc0455bf3d455f202d1b74a83ea27004f",
+ "setRoot": "0x40586f19308707d4dd2f4db69416ad385f2d5b07ab7c616ae9aae1ac21c69390",
+ "N": 84089,
+ "header_keccak": "0x397e61965a0e3c3d584f44821b6397bb90087ffee9508291c6222b0cb9efdaf6"
+}
