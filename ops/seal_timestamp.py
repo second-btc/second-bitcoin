@@ -18,20 +18,57 @@ MAX_SEAL_LEAD_MIN = 120  # contract MAX_SEAL_LEAD = 2 hours
 BEACON_ROOTS = "0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02"
 
 
-def rpc(url, method, params):
+def _post(url, method, params):
     req = urllib.request.Request(
         url, data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode(),
-        headers={"content-type": "application/json"},
+        headers={"content-type": "application/json",
+                 # public gateways WAF-block the default python-urllib agent
+                 "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_4) 2btc/1.0"},
     )
-    out = json.load(urllib.request.urlopen(req, timeout=30))
+    out = json.load(urllib.request.urlopen(req, timeout=20))
     if "error" in out:
         raise RuntimeError(out["error"])
     return out["result"]
 
 
-def main():
+# Endpoint list, tried in order. These are all plain latest-state reads (tip, a recent block, one eth_call),
+# identical from any honest Base node — so rotation cannot change the answer, it only survives a rate limit.
+# A single throttled provider must never be able to block the seal.
+def endpoints():
+    eps = []
     cfg = os.path.expanduser("~/.config/2btc/base-rpc.txt")
-    url = open(cfg).read().strip() if os.path.exists(cfg) else os.environ["BASE_RPC_URL"]
+    if os.path.exists(cfg):
+        eps.append(open(cfg).read().strip())
+    if os.environ.get("BASE_RPC_URL"):
+        eps.append(os.environ["BASE_RPC_URL"])
+    eps += ["https://base-mainnet.public.blastapi.io", "https://base.gateway.tenderly.co",
+            "https://mainnet.base.org", "https://base-rpc.publicnode.com"]
+    seen, out = set(), []
+    for e in eps:
+        if e and e not in seen:
+            seen.add(e)
+            out.append(e)
+    return out
+
+
+EPS = []
+
+
+def rpc(url_ignored, method, params):
+    """url is ignored: we rotate over endpoints() and return the first successful answer."""
+    last = None
+    for url in EPS or endpoints():
+        try:
+            return _post(url, method, params)
+        except Exception as e:  # noqa: BLE001 — throttled/blocked provider → try the next
+            last = e
+    raise RuntimeError(f"all Base endpoints failed for {method}: {last}")
+
+
+def main():
+    global EPS
+    EPS = endpoints()
+    url = None  # rpc() rotates over EPS
     lead_min = int(sys.argv[1]) if len(sys.argv) > 1 else 20
     if not (0 < lead_min < MAX_SEAL_LEAD_MIN):
         sys.exit(f"lead_minutes must be in (0, {MAX_SEAL_LEAD_MIN}); MAX_SEAL_LEAD is 2h.")

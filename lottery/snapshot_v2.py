@@ -20,6 +20,7 @@ import argparse
 import json
 import os
 import re
+import socket
 import sqlite3
 import sys
 import threading
@@ -27,6 +28,12 @@ import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
+
+# Belt-and-suspenders against endpoints that accept a TCP connection then send nothing: a global socket
+# timeout guarantees connect+read cannot block forever (urllib's timeout= has hung at 0% CPU for minutes
+# in practice). A hung endpoint now raises within HANG_TIMEOUT and MultiRPC rotates to another.
+HANG_TIMEOUT = 45
+socket.setdefaulttimeout(HANG_TIMEOUT)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from keccak import keccak256  # noqa: E402
@@ -64,7 +71,7 @@ class RPC:
         last = self.post_attempts - 1
         for attempt in range(self.post_attempts):
             try:
-                with urllib.request.urlopen(req, timeout=90) as r:
+                with urllib.request.urlopen(req, timeout=HANG_TIMEOUT) as r:
                     return json.load(r)
             except urllib.error.HTTPError as e:
                 if e.code in (429, 503) and attempt < last:  # rate limit / capacity → back off and retry
@@ -406,7 +413,7 @@ def eligible(reads):
 CHUNK = 1000  # candidates per cross-candidate batch pass (bounds memory; each pass = ~5k Base + 4k L1 reads)
 
 
-def evaluate(base, eth, cand_sorted, anchors, exclusions):
+def evaluate(base, eth, cand_sorted, anchors, exclusions, resume=None):
     """Cross-candidate batched two-pass evaluation. EVERY value that reaches the predicate is a direct
     consensus read — no derived nonces, no arithmetic stand-ins (post-Pectra EIP-7702 authorization
     bumps make tx-nonce arithmetic unsound; the 2026-08-30 adversarial review removed that path).
@@ -421,7 +428,38 @@ def evaluate(base, eth, cand_sorted, anchors, exclusions):
     reads_used = [0]   # cost accounting
     done = [0]
 
+    # Optional chunk checkpoint: each completed chunk's eligible addresses are appended as
+    # "<start>:<addr,addr,...>" so a killed run resumes without recomputing. Chunks are deterministic
+    # (sorted candidates, fixed CHUNK, fixed anchors), so cached results are exact; the tag line refuses
+    # a checkpoint from a different candidate set / anchors. A torn final line (kill mid-write) fails
+    # address validation and is simply recomputed.
+    cached = {}
+    rf = None
+    if resume:
+        tag = f"# eval-ckpt {len(cand)} {anchors['B']} {anchors['L']} {CHUNK}"
+        if os.path.exists(resume):
+            lines = open(resume).read().split("\n")
+            if lines and lines[0] == tag:
+                for ln in lines[1:]:
+                    if ":" not in ln:
+                        continue
+                    idx, rest = ln.split(":", 1)
+                    addrs = [a for a in rest.split(",") if a]
+                    if idx.isdigit() and all(ADDR_RE.match(a) for a in addrs):
+                        cached[int(idx)] = addrs
+        if cached:
+            rf = open(resume, "a")
+            print(f"  resume: {len(cached)} chunks cached ({len(cached) * CHUNK:,} candidates)", file=sys.stderr)
+        else:
+            rf = open(resume, "w")
+            rf.write(tag + "\n")
+            rf.flush()
+
     def eval_chunk(start):
+        if start in cached:
+            with lock:
+                done[0] += len(cand[start:start + CHUNK])
+            return cached[start]
         cs = cand[start:start + CHUNK]
         # PASS 1 — balance-at-anchor band (2 reads/candidate; necessary condition of §3.1)
         p1b = base.batch_call([("eth_getBalance", [a, hexblk(B)]) for a in cs])
@@ -454,6 +492,9 @@ def evaluate(base, eth, cand_sorted, anchors, exclusions):
         with lock:
             reads_used[0] += 2 * len(cs) + 7 * len(survivors)
             done[0] += len(cs)
+            if rf:
+                rf.write(f"{start}:{','.join(chunk_out)}\n")
+                rf.flush()
             print(f"  ... {done[0]}/{len(cand)} evaluated (+{len(chunk_out)} eligible in chunk), "
                   f"{reads_used[0]} reads used", file=sys.stderr)
         return chunk_out
@@ -509,6 +550,7 @@ def main():
     b.add_argument("--out", required=True)
     b.add_argument("--scan-db-base", help="pre-scan sqlite for Base (else direct block enumeration)")
     b.add_argument("--scan-db-eth", help="pre-scan sqlite for Ethereum L1")
+    b.add_argument("--resume", help="chunk checkpoint file: killed runs resume without recomputation")
     s = sub.add_parser("scan", help="resumable pre-scan of tx senders into a sqlite DB (before B exists)")
     s.add_argument("--chain", choices=["base", "eth"], required=True)
     s.add_argument("--db", required=True)
@@ -538,7 +580,7 @@ def main():
                    if a.scan_db_eth else enumerate_senders(eth, anchors["L"] - a.w_l1, anchors["L"]))
         cand = sorted(base_set | eth_set)
         print(f"candidates: {len(cand)}", file=sys.stderr)
-        eligible_list = evaluate(base, eth, cand, anchors, excl)
+        eligible_list = evaluate(base, eth, cand, anchors, excl, resume=a.resume)
         set_root = "0x" + MerkleTree([leaf_v2(x) for x in eligible_list]).root.hex() if eligible_list else None
         hdr = build_header(anchors, a.w_base, a.w_l1, excl, cand, set_root, len(eligible_list))
         os.makedirs(a.out, exist_ok=True)
