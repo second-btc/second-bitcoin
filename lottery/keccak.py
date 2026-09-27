@@ -1,5 +1,5 @@
 """Pure-Python Keccak-256 (Ethereum flavour, padding 0x01), no dependencies.
-Deliberately dependency-free so that anyone can re-run the lottery with a stock Python 3.
+Deliberately dependency-free so that anyone can re-run the redistribution snapshot with a stock Python 3.
 Self-test: keccak256(b"") == c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470
 """
 

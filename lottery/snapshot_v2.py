@@ -310,8 +310,9 @@ def enumerate_senders(rpc, from_blk, to_blk):
 # window. Equivalence to enumerate_senders() over (X-W, X]:
 #   last_block in (X-W, X]  ->  sender in window (their latest tx is in it)
 #   last_block <= X-W       ->  every tx is at or before X-W -> not in window
-#   last_block >  X         ->  undecidable from the max alone -> resolved EXACTLY by the nonce-diff
-#                               fallback nonce(a, X) > nonce(a, X-W) (2 consensus reads; §2 of the spec)
+#   last_block >  X       ->  undecidable from the max alone -> REFUSED: the DB is discarded and rescanned
+#                             with --to-block X. No nonce arithmetic may substitute — post-Pectra an
+#                             EIP-7702 authorization bumps a nonce with no sent tx (spec §2).
 def open_scan_db(path):
     db = sqlite3.connect(path, timeout=60)  # ride out transient file locks (backups, indexers)
     db.execute("CREATE TABLE IF NOT EXISTS senders(addr TEXT PRIMARY KEY, last_block INTEGER, last_nonce INTEGER)")

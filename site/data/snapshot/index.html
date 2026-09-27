@@ -40,18 +40,19 @@ to trust it; you are asked to re-run it.</p>
 <tr><td><a href="header.json">header.json</a></td><td>the committed header — block anchors, thresholds, exclusions, <code>candidates_keccak</code>, <code>setRoot</code>, <code>N</code>. Self-binding via <code>header_keccak</code>.</td></tr>
 <tr><td><a href="eligible.txt">eligible.txt</a></td><td>the canonical eligible set: 84,089 lowercase addresses, sorted, LF-joined, no trailing newline.</td></tr>
 <tr><td><code>../proof/&lt;address&gt;.json</code></td><td>that address's Merkle proof against <code>setRoot</code> — one file per eligible wallet.</td></tr>
-<tr><td><a href="https://github.com/second-btc/second-bitcoin/releases/tag/snapshot-b50615795">candidates.txt.gz</a></td><td>the full 6,903,801-address candidate universe, as a GitHub release asset (283&nbsp;MB unpacked; GitHub rejects repository files over 100&nbsp;MB).</td></tr>
+<tr><td><a href="https://github.com/second-btc/second-bitcoin/releases/tag/snapshot-b50615795">candidates.txt.gz</a></td><td>the full 6,903,801-address candidate universe, as a GitHub release asset (283&nbsp;MiB unpacked — exactly 296,863,442 bytes; GitHub rejects repository files over 100&nbsp;MB).</td></tr>
 <tr><td><a href="README.md">README.md</a></td><td>the same instructions as this page, in plain text.</td></tr>
 </table>
 
 <h2>1. Check the set root</h2>
 <p class="mut">Recompute the Merkle root from the list and compare it with what the contract stores. If these differ, the published list is not the committed one.</p>
-<pre>python3 lottery/build_v2_proofs.py --addresses eligible.txt --out /tmp/check --limit 0
+<pre>python3 lottery/build_v2_proofs.py --addresses site/data/snapshot/eligible.txt --out /tmp/check --limit 1
 cast call 0x292198f6aceb505EbaD96ba7654bAe70B57c0fdd "setRoot()(bytes32)" \
   --rpc-url https://base-rpc.publicnode.com</pre>
+<p class="mut">Run every command on this page from the repository root. <code>--limit 1</code> computes the root over the whole list but writes only one proof file.</p>
 
 <h2>2. Check the candidate universe</h2>
-<p class="mut">The header binds <code>candidates_keccak</code> = keccak256 of the candidate file's bytes.</p>
+<p class="mut">The header binds <code>candidates_keccak</code> = keccak256 of the candidate file's bytes. The hash takes 15–20 minutes because <code>keccak.py</code> is deliberately pure Python; the byte count is a free pre-check.</p>
 <pre>gh release download snapshot-b50615795 -p candidates.txt.gz -R second-btc/second-bitcoin
 gunzip -c candidates.txt.gz &gt; candidates.txt
 python3 -c "import sys;sys.path.insert(0,'lottery');from keccak import keccak256;\
@@ -65,12 +66,36 @@ parameters differ from the verifier's own constants, re-reads every consensus va
 derived shortcuts, and exits non-zero on any mismatch.</p>
 <pre>BASE_RPC_URL=&lt;base archive&gt; ETH_RPC_URL=&lt;eth archive&gt; \
 python3 lottery/snapshot_v2.py verify \
-    --header header.json --candidates candidates.txt \
+    --header site/data/snapshot/header.json --candidates candidates.txt \
     --expect-root 0x40586f19308707d4dd2f4db69416ad385f2d5b07ab7c616ae9aae1ac21c69390 \
     --expect-n 84089</pre>
 
+<h2>4. …and that the candidate universe was complete</h2>
+<p class="mut"><b>What step 3 does not cover.</b> <code>verify</code> accepts the candidate file as given —
+<code>candidates_keccak</code> is the hash <em>of that file</em>. A file that silently omitted in-window senders
+would still pass every check and still reproduce <code>setRoot</code> and <code>N</code>, while the omitted
+addresses were wrongly excluded. Completeness is the one property the header cannot bind.</p>
+<p class="mut">So re-scan the windows yourself. They are exact block counts pinned in the header:
+Base <code>(49,985,795 , 50,615,795]</code> and Ethereum <code>(25,761,306 , 25,862,106]</code>. Membership is
+<code>tx.from</code> appearances in those blocks only — never nonce arithmetic, because post-Pectra an EIP-7702
+authorization bumps a nonce with no transaction sent. The union, lowercased, deduplicated, sorted and LF-joined
+without a trailing newline, must equal <code>candidates.txt</code> byte for byte. Also confirm that
+B&nbsp;=&nbsp;50,615,795 is the block carrying the token's deployment transaction: <code>verify</code> re-derives
+B from <code>T_B</code> but does not assert it is the genesis block, and the whitepaper's "B is not a chosen
+block" rests on that.</p>
+<p class="mut">Steps 1–3 prove the rule was applied correctly to the published input. Step 4 proves the input was
+complete. Both together — not anyone's word — are the guarantee.</p>
+
+<h2>A note on the deployed source</h2>
+<p class="mut">The verified contract source keeps a few pre-deployment comments: <code>WINNERS0 = 24_000; //
+provisional</code>, two "finalize before deploy" items, and a <code>// old 70% + 19.9%</code> note from a
+superseded design. These are stale comments only. <code>WINNERS0</code> is declared <code>constant</code> — fixed
+at deployment, unchangeable, and it is the value the odds above come from. The EIP-4788 semantics one note asked
+to confirm were confirmed by the seal itself: <code>genesisSeed</code> is non-zero. The contract is immutable, so
+the comments cannot be edited out.</p>
+
 <h2>What the rule was</h2>
-<p class="mut">All of, measured at B: held between <b>0.1 and 40 ETH</b> (Base and Ethereum balances combined) at
+<p class="mut">All of, measured at B: held <b>at least 0.1 ETH and strictly less than 40 ETH</b> (Base and Ethereum balances combined) at
 both B and two weeks before B · first transaction at least <b>12 months</b> before B, taking the earlier of the two
 chains · between <b>20 and 20,000</b> lifetime transactions across both chains · sent a transaction within the last
 ~two weeks · a plain wallet (no contract code, or an EIP-7702 delegation only). Thresholds are in ETH, so no price

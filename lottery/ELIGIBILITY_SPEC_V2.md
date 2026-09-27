@@ -1,4 +1,4 @@
-# Second Bitcoin (2BTC) — Eligibility Spec v2 (one-shot broad lottery)
+# Second Bitcoin (2BTC) — Eligibility Spec v2 (one-shot broad redistribution)
 
 **Canonical, deterministic definition of the eligible-address set.** This is the rule that is published with
 the contract at deployment. Any competent third party who follows it against an archive node must reproduce the
@@ -33,7 +33,7 @@ Design principles that make it reproducible:
 - **L (Ethereum)** := the **highest Ethereum L1 block with `timestamp ≤ timestamp(B)`** (binary search).
 - **L₂ (Ethereum, two weeks prior)** := the highest Ethereum L1 block with `timestamp ≤ timestamp(B) − 1 209 600`.
 
-All four block numbers are computed once and **written into the committed header** (§7), so "2 weeks" has exactly
+All six block numbers are computed once and **written into the committed header** (§7), so "2 weeks" has exactly
 one numeric meaning and no one re-derives them differently.
 
 ## 2. Candidate universe (enumeration)
@@ -79,9 +79,10 @@ B_age = highest Base     block with timestamp ≤ (ts_B − 31 536 000)   # 365 
 L_age = highest Ethereum block with timestamp ≤ (ts_B − 31 536 000)
 eligible_age = ( nonceBase(a, B_age) ≥ 1 ) OR ( nonceL1(a, L_age) ≥ 1 )
 ```
-This is exactly "first outbound tx ≥ 365 days before B, taking the earlier chain" — if the account had sent any
-tx by the cutoff block, its first tx was at or before that block, i.e. age ≥ 365 days. It is a single consensus
-read per chain (no binary search), so it is cheap, exact, and provider-agnostic. `B_age`/`L_age` are pinned in
+This is "had account activity by the 365-days-before cutoff, taking the earlier chain": if the nonce was already
+≥ 1 at the cutoff block, the account's first nonce-bumping action was at or before it. Post-Pectra that action may
+be an EIP-7702 authorization rather than a sent transaction, so the test is on the **nonce** as written. It is a
+single consensus read per chain (no binary search) — cheap, deterministic, and provider-agnostic. `B_age`/`L_age` are pinned in
 the header.
 
 **3.3 Activity 20 – 20,000 txs** — combined outbound nonce:
@@ -89,8 +90,11 @@ the header.
 txs = nonceBase(a,B) + nonceL1(a,L)
 eligible_activity = 20 ≤ txs ≤ 20 000
 ```
-(Nonce is the only tx count with an exact, provider-agnostic consensus definition. There is **no separate
-"multiple months" test** — age ≥ 12 mo together with ≥ 20 txs is the intended proxy, and it is cheap and exact.)
+(The rule is defined on the **nonce** — the only account-activity figure with a provider-agnostic consensus
+definition. Post-Pectra a nonce counts sent transactions **plus** EIP-7702 authorizations, so it is an upper
+bound on transactions sent rather than an exact count; the rule is the nonce band as written, and that is what a
+verifier reproduces. There is **no separate "multiple months" test** — age ≥ 12 mo together with nonce ≥ 20 is
+the intended proxy.)
 
 **3.4 Recent activity** — sent a tx in the enumeration window on either chain. Defined **identically** to §2 so
 the universe and this predicate can never disagree:
@@ -116,8 +120,11 @@ contract, the Uniswap v3 pool (`computedPool()`), and the founder/operator addre
 
 ## 5. Data source
 
-A true **archive** node for each chain (Base and Ethereum L1), able to read historical state at B, B₂, L, L₂ and
-to binary-search historical nonces. Cross-check a random sample against a second independent archive provider.
+A true **archive** node for each chain (Base and Ethereum L1), able to read historical state at all six pinned
+anchors — `B`, `B₂`, `B_age` on Base and `L`, `L₂`, `L_age` on Ethereum. `B_age`/`L_age` sit 365 days before B
+(2025-08-29 for this genesis), so the node must serve state at least ~13 months deep. **No historical binary
+search is required:** every predicate is a single `eth_getBalance` / `eth_getTransactionCount` / `eth_getCode` at
+a block number pinned in the header. Cross-check a random sample against a second independent archive provider.
 Forbidden: any indexer-derived or non-consensus field (see principles above).
 
 ## 6. Merkle tree (must reproduce the on-chain `setRoot`)
@@ -132,20 +139,29 @@ Forbidden: any indexer-derived or non-consensus field (see principles above).
   can get a different root from the identical set, so the builder is part of the spec.
 - `N` (`eligibleCount`) committed on-chain **MUST equal the number of leaves** (the eligible list length). The
   contract cannot check this, so it is a genesis-discipline requirement: `eligibleCount == len(list)`. (An
-  understated N inflates the win rate and can push realized pieces past the `DRAW` budget → late winners revert.)
+  understated N inflates the selection rate and can push realized pieces past the `DRAW` budget → late claims revert.)
 
 ## 7. Committed header (hashed with the list)
 
 Published and hashed together with the address list so every parameter is bound:
 ```
 { rule: "2btc-v2-oneshot",
-  T_B, B, B2, L, L2,           // the five block anchors (numbers + timestamps)
-  W_base, W_l1,                // enumeration window block counts
+  T_B,                                    // timestamp(B); every anchor below is derived from it
+  B, B2, L, L2, B_age, L_age,             // the six block anchors (numbers)
+  ts_B, ts_B2, ts_L, ts_L2,               // and their timestamps
+  ts_Bage, ts_Lage,
+  W_base, W_l1,                           // enumeration window block counts
   floor_wei: 100000000000000000, cap_wei: 40000000000000000000,
   min_age_s: 31536000, min_txs: 20, max_txs: 20000,
-  exclusions: [ ...lowercase addresses... ],
-  candidates_keccak: 0x...,    // hash of the deduped, sorted raw candidate dump
-  setRoot: 0x..., N: <len> }
+  exclusions: [ ...lowercase addresses, sorted... ],
+  candidates_keccak: 0x...,               // keccak256 of the LF-joined, deduped, sorted candidate dump
+  setRoot: 0x..., N: <len>,
+  header_keccak: 0x... }                  // keccak256(json.dumps(header minus header_keccak,
+                                          //   sort_keys=True, separators=(",",":")))
+```
+All 26 keys above are present in the committed header; `header_keccak` binds every other key, so a reconstruction
+that omits any of them will not match. (Verify with `snapshot_v2.py verify`, which recomputes it.)
+```
 ```
 
 ## 8. Output → on-chain
