@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, custom, http, formatUnits, getAddress, isAddress, defineChain } from "./vendor/viem.js";
+import { createPublicClient, createWalletClient, custom, http, fallback, formatUnits, getAddress, isAddress, defineChain } from "./vendor/viem.js";
 import { CONFIG } from "./config.js";
 import { ABI } from "./abi.js";
 
@@ -14,7 +14,13 @@ if (isLocal) { if (q.get("token")) cfg.token = q.get("token"); if (q.get("chain"
 
 const ZERO = "0x0000000000000000000000000000000000000000";
 const chain = defineChain({ id: cfg.chainId, name: cfg.chainName, nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: { default: { http: [cfg.rpc] } }, blockExplorers: { default: { name: "Explorer", url: cfg.explorer } } });
-const pub = createPublicClient({ chain, transport: http(cfg.rpc) });
+// One page load needs ~12 reads. Unbatched against a single public endpoint that rate-limits after ~5, that
+// is a guaranteed failure — so: batch them into Multicall3 (one request) and fall back across endpoints.
+const rpcList = (Array.isArray(cfg.rpcs) && cfg.rpcs.length ? cfg.rpcs : [cfg.rpc]);
+const readTransport = rpcList.length > 1
+  ? fallback(rpcList.map((u) => http(u, { batch: true, retryCount: 2 })), { rank: false })
+  : http(rpcList[0], { batch: true, retryCount: 3 });
+const pub = createPublicClient({ chain, transport: readTransport, batch: { multicall: { wait: 32 } } });
 
 const $ = (id) => document.getElementById(id);
 const coins = (u, d = 2) => Number(formatUnits(BigInt(u), 8)).toLocaleString(undefined, { maximumFractionDigits: d });
@@ -26,15 +32,15 @@ function read(fn, args = []) { return pub.readContract({ address: cfg.token, abi
 let wallet = null, account = null;
 
 async function loadStats() {
-  const [supply, drawTot, drawClaimed, burned, seed, start, claimWindow] = await Promise.all([
-    read("totalSupply"), read("DRAW"), read("drawClaimed"), read("burned"), read("genesisSeed"), read("startTime"), read("CLAIM_WINDOW"),
+  const [supply, drawClaimed, burned, seed, start, claimWindow] = await Promise.all([
+    read("totalSupply"), read("drawClaimed"), read("burned"), read("genesisSeed"), read("startTime"), read("CLAIM_WINDOW"),
   ]);
   const sealed = seed !== "0x0000000000000000000000000000000000000000000000000000000000000000";
   $("s-supply").textContent = coins(supply, 0);
   $("s-distributed").textContent = coins(drawClaimed, 0);
   $("s-distributed-sub").textContent = `${pct(drawClaimed, supply)}% of supply`;
   $("s-burned").textContent = coins(burned, 0);
-  $("s-status").textContent = sealed ? "Live" : "Awaiting seal";
+  $("s-status").textContent = sealed ? new Date((Number(start) + Number(claimWindow)) * 1000).toISOString().slice(0, 10) : "Awaiting seal";
 
   if (!sealed) { $("s-epoch").textContent = "Pending"; $("epoch-line").textContent = "The redistribution has not been sealed yet."; return; }
   const now = Math.floor(Date.now() / 1000);
@@ -57,8 +63,21 @@ async function refreshDraw() {
       box.innerHTML = `<span class="muted">The redistribution has not been sealed yet — shares are not decided. Check back after the seal.</span>`;
       $("draw-btn").disabled = true; return;
     }
+    // isDrawWinner() is a pure function of (seed, address) — it does NOT check list membership, so it returns
+    // true for ~28.5% of ANY address. Membership is only enforced inside claimDraw's Merkle check. So establish
+    // membership from the published set FIRST, or an address that was never eligible is shown a share it can
+    // never claim.
+    let proof = null;
+    try { proof = await fetchProof(account); } catch { proof = null; }
+    if (!proof) {
+      box.innerHTML = `<b>Not in the eligible set.</b> <span class="muted">This address is not one of the ${cfg.eligibleCount ? Number(cfg.eligibleCount).toLocaleString() : "84,089"} wallets in the genesis list, so it has no share. The list and the rule that produced it are <a href="data/snapshot/">published and reproducible</a>.</span>`;
+      $("draw-btn").disabled = true; return;
+    }
     const [open, winner, claimed] = await Promise.all([read("drawOpen"), read("isDrawWinner", [account]), read("claimedDraw", [account])]);
-    if (!winner) { box.innerHTML = `<b>No share.</b> <span class="muted">Your address is eligible but was not selected, or is not in the list.</span>`; $("draw-btn").disabled = true; return; }
+    if (!winner) {
+      box.innerHTML = `<b>Eligible, but not selected.</b> <span class="muted">This address is in the genesis list, but the sealed seed did not select it (24,000 of 84,089 — about 28.5%).</span>`;
+      $("draw-btn").disabled = true; return;
+    }
     const piece = await read("drawPiece", [account]);
     if (claimed) { box.innerHTML = `<b class="good">Claimed.</b> You received ${coins(piece)} 2BTC.`; $("draw-btn").disabled = true; return; }
     box.innerHTML = `<b class="good">Your share: ${coins(piece)} 2BTC.</b>` + (open ? "" : ` <span class="bad">The claim window is closed.</span>`);
@@ -88,13 +107,26 @@ async function claimDraw() {
 
 // ---- wallet
 async function connect() {
-  if (!window.ethereum) { alert("No Ethereum wallet found. Install MetaMask."); return; }
-  wallet = createWalletClient({ chain, transport: custom(window.ethereum) });
-  const [addr] = await wallet.requestAddresses();
-  account = getAddress(addr);
-  try { await wallet.switchChain({ id: cfg.chainId }); } catch { /* user may add the chain manually */ }
-  $("connect").textContent = short(account);
-  await refreshDraw();
+  const box = $("draw-status");
+  if (!window.ethereum) {
+    box.innerHTML = `<span class="muted">No wallet detected in this browser. Open this page inside your wallet's browser (MetaMask, Rainbow, Coinbase Wallet), or use a desktop browser with a wallet extension. You can always look your address up in the <a href="data/snapshot/">published list</a>.</span>`;
+    return;
+  }
+  try {
+    wallet = createWalletClient({ chain, transport: custom(window.ethereum) });
+    const addrs = await wallet.requestAddresses();
+    if (!addrs || !addrs.length) { box.innerHTML = `<span class="muted">No account was shared. Approve the connection in your wallet to check.</span>`; return; }
+    account = getAddress(addrs[0]);
+    try { await wallet.switchChain({ id: cfg.chainId }); }
+    catch { box.innerHTML = `<span class="bad">Switch your wallet to ${cfg.chainName} (chain ${cfg.chainId}) before claiming.</span>`; }
+    $("connect").textContent = short(account);
+    // without these, switching accounts in the wallet leaves the previous address's result on screen
+    window.ethereum.on?.("accountsChanged", () => location.reload());
+    window.ethereum.on?.("chainChanged", () => location.reload());
+    await refreshDraw();
+  } catch (e) {
+    box.innerHTML = `<span class="bad">${(e.shortMessage || e.message || String(e)).slice(0, 160)}</span>`;
+  }
 }
 
 async function main() {

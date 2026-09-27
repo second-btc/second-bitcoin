@@ -5,6 +5,10 @@ export const CONFIG = {
   chainId: 8453,
   chainName: "Base",
   rpc: "https://mainnet.base.org",
+  // Read endpoints tried in order. mainnet.base.org 429s after ~5 calls from one IP, which is less than a
+  // single page load needs, so it is the LAST resort; the first two sustained 15/15 in testing (2026-09-27).
+  // Consensus reads at a fixed contract are identical from any honest node, so the choice cannot change results.
+  rpcs: ["https://base-rpc.publicnode.com", "https://base.drpc.org", "https://mainnet.base.org"],
   token: "0x292198f6aceb505EbaD96ba7654bAe70B57c0fdd", // genesis block 50615795, Base mainnet
   explorer: "https://basescan.org",
   whitepaper: "whitepaper/second_bitcoin_en.html",

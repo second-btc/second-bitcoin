@@ -1,0 +1,81 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Second Bitcoin — genesis snapshot &amp; how to verify it</title>
+<style>
+:root{--bg:#0e0f12;--fg:#e8e6e1;--mut:#9a968e;--acc:#e8a33d;--card:#171922;--line:#2a2d38}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:40px 20px}
+main{max-width:820px;margin:0 auto}
+h1{font-size:24px;margin:0 0 6px}h2{font-size:17px;margin:34px 0 10px;color:var(--acc)}
+.mut{color:var(--mut)}a{color:var(--acc)}
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:600}
+code{font:13px ui-monospace,Menlo,Consolas,monospace;background:var(--card);padding:2px 5px;border-radius:4px;word-break:break-all}
+pre{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace}
+.nums{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:16px 0}
+.nums div{display:flex;justify-content:space-between;gap:16px;padding:3px 0;font:13.5px ui-monospace,Menlo,Consolas,monospace}
+.nums span:first-child{color:var(--mut)}
+footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--mut);font-size:13px}
+</style></head><body><main>
+
+<p class="mut"><a href="../../">&larr; Second Bitcoin</a></p>
+<h1>Genesis snapshot — and how to check it yourself</h1>
+<p class="mut">Eligibility was decided once, from the on-chain state at snapshot block <b>B&nbsp;=&nbsp;50,615,795</b> — the block in
+which the token was deployed. Everything needed to reproduce that decision is published here. You are not asked
+to trust it; you are asked to re-run it.</p>
+
+<div class="nums">
+  <div><span>eligible wallets (N)</span><span>84,089</span></div>
+  <div><span>candidates evaluated</span><span>6,903,801</span></div>
+  <div><span>shares drawn (WINNERS0)</span><span>24,000 &nbsp;→&nbsp; odds ≈ 28.5%</span></div>
+  <div><span>setRoot</span><span>0x40586f19…c69390</span></div>
+  <div><span>header_keccak</span><span>0x397e6196…efdaf6</span></div>
+  <div><span>token</span><span>0x292198f6…7c0fdd</span></div>
+</div>
+
+<h2>Files</h2>
+<table>
+<tr><th>file</th><th>what it is</th></tr>
+<tr><td><a href="header.json">header.json</a></td><td>the committed header — block anchors, thresholds, exclusions, <code>candidates_keccak</code>, <code>setRoot</code>, <code>N</code>. Self-binding via <code>header_keccak</code>.</td></tr>
+<tr><td><a href="eligible.txt">eligible.txt</a></td><td>the canonical eligible set: 84,089 lowercase addresses, sorted, LF-joined, no trailing newline.</td></tr>
+<tr><td><code>../proof/&lt;address&gt;.json</code></td><td>that address's Merkle proof against <code>setRoot</code> — one file per eligible wallet.</td></tr>
+<tr><td><a href="https://github.com/second-btc/second-bitcoin/releases/tag/snapshot-b50615795">candidates.txt.gz</a></td><td>the full 6,903,801-address candidate universe, as a GitHub release asset (283&nbsp;MB unpacked; GitHub rejects repository files over 100&nbsp;MB).</td></tr>
+<tr><td><a href="README.md">README.md</a></td><td>the same instructions as this page, in plain text.</td></tr>
+</table>
+
+<h2>1. Check the set root</h2>
+<p class="mut">Recompute the Merkle root from the list and compare it with what the contract stores. If these differ, the published list is not the committed one.</p>
+<pre>python3 lottery/build_v2_proofs.py --addresses eligible.txt --out /tmp/check --limit 0
+cast call 0x292198f6aceb505EbaD96ba7654bAe70B57c0fdd "setRoot()(bytes32)" \
+  --rpc-url https://base-rpc.publicnode.com</pre>
+
+<h2>2. Check the candidate universe</h2>
+<p class="mut">The header binds <code>candidates_keccak</code> = keccak256 of the candidate file's bytes.</p>
+<pre>gh release download snapshot-b50615795 -p candidates.txt.gz -R second-btc/second-bitcoin
+gunzip -c candidates.txt.gz &gt; candidates.txt
+python3 -c "import sys;sys.path.insert(0,'lottery');from keccak import keccak256;\
+print('0x'+keccak256(open('candidates.txt','rb').read()).hex())"   # == header.json candidates_keccak</pre>
+<p class="mut">You do not have to trust this file either: §2 of <a href="https://github.com/second-btc/second-bitcoin/blob/main/lottery/ELIGIBILITY_SPEC_V2.md">the eligibility spec</a>
+defines the candidate set as the senders of the window's blocks, so it is re-derivable from any archive node.</p>
+
+<h2>3. Re-run the whole rule</h2>
+<p class="mut">The strongest check. This re-derives the block anchors from <code>T_B</code>, refuses a header whose
+parameters differ from the verifier's own constants, re-reads every consensus value from archive nodes with no
+derived shortcuts, and exits non-zero on any mismatch.</p>
+<pre>BASE_RPC_URL=&lt;base archive&gt; ETH_RPC_URL=&lt;eth archive&gt; \
+python3 lottery/snapshot_v2.py verify \
+    --header header.json --candidates candidates.txt \
+    --expect-root 0x40586f19308707d4dd2f4db69416ad385f2d5b07ab7c616ae9aae1ac21c69390 \
+    --expect-n 84089</pre>
+
+<h2>What the rule was</h2>
+<p class="mut">All of, measured at B: held between <b>0.1 and 40 ETH</b> (Base and Ethereum balances combined) at
+both B and two weeks before B · first transaction at least <b>12 months</b> before B, taking the earlier of the two
+chains · between <b>20 and 20,000</b> lifetime transactions across both chains · sent a transaction within the last
+~two weeks · a plain wallet (no contract code, or an EIP-7702 delegation only). Thresholds are in ETH, so no price
+source or oracle is involved. The token, pool, vesting and founder addresses are excluded and named in the header.</p>
+
+<footer>This page describes software. It is not an offer, solicitation, or advice. 2BTC may be worth nothing.
+Not affiliated with Bitcoin, Base, or Uniswap.</footer>
+</main></body></html>

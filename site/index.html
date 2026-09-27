@@ -73,7 +73,7 @@
     <div class="grid">
       <div class="stat"><div class="k">Supply</div><div class="v" id="s-supply">—</div><div class="s">2BTC</div></div>
       <div class="stat"><div class="k">Distributed</div><div class="v" id="s-distributed">—</div><div class="s" id="s-distributed-sub">—</div></div>
-      <div class="stat"><div class="k">Burned</div><div class="v" id="s-burned">—</div><div class="s">unclaimed</div></div>
+      <div class="stat"><div class="k">Burned</div><div class="v" id="s-burned">—</div><div class="s">unclaimed, at close</div></div>
       <div class="stat"><div class="k">Redistribution</div><div class="v" id="s-epoch">—</div><div class="s" id="s-status">—</div></div>
     </div>
     <div class="epoch-line" id="epoch-line">Reading the chain…</div>
@@ -81,16 +81,17 @@
     <div class="card">
       <div class="tag">Redistribution · 89.9%</div>
       <h3>Does your wallet hold a share?</h3>
-      <p class="d">Every eligible wallet had the same chance. If your address was selected, claim your coins — the contract checks your share itself, from the sealed seed and your address. Nothing was sent to a wallet that did not ask, and unclaimed coins are burned when the window closes.</p>
+      <p class="d">24,000 shares were drawn across 84,089 eligible wallets — odds of about 28.5%. Pieces run from 1 to 50 coins, heavily skewed: most recipients get 1. Every eligible wallet had the same chance. If your address was selected, claim your coins — the contract checks your share itself, from the sealed seed and your address. Nothing was sent to a wallet that did not ask, and unclaimed coins are burned when the window closes.</p>
       <div class="statusbox" id="draw-status"><span class="muted">Connect your wallet to check.</span></div>
       <button id="draw-btn" class="cta" disabled>Claim</button>
     </div>
   </div>
 
   <div class="how">
-    <div><h4>Fair start</h4>The redistribution goes only to wallets holding between 0.1 and 40 ETH (about one bitcoin's worth) — those who missed Bitcoin's early years, not the already-wealthy. Above the floor, wallet size buys no better odds.</div>
-    <div><h4>Self-verifying</h4>Each claim is recomputed on-chain from the sealed seed and your address. There is no posted recipients list to trust and no operator after genesis.</div>
+    <div><h4>Fair start</h4>The redistribution goes only to wallets holding between 0.1 and 40 ETH — those who missed Bitcoin's early years, not the already-wealthy. Above the floor, wallet size buys no better odds.</div>
+    <div><h4>Self-verifying</h4>Each claim is recomputed on-chain from the sealed seed and your address. There is no posted winners list to trust, and no operator after genesis. Your Merkle proof is served from this site and can also be regenerated from the published list, so claiming never depends on this site staying up.</div>
     <div><h4>Sealed once</h4>A single random value, sealed once after the eligible list is committed, decides every share. Nobody — the author included — can choose who receives.</div>
+    <div><h4>Where the 210,000 went</h4>188,790 (89.9%) to this redistribution · 21,000 (10.0%) to a single-sided Uniswap v3 pool that holds no ETH · 210 (0.1%) to the founder, of which 160 vest linearly over two years. Minted once at genesis; there is no mint function. Nothing can be sold until a buyer brings the first ETH.</div>
     <div><h4>Honest about the rest</h4>The eligible list is built by a public, reproducible rule; anyone can re-derive and compare it. Unclaimed coins are burned. The coin may be worth nothing.</div>
   </div>
 
@@ -98,6 +99,7 @@
     <a id="wp-link2" href="whitepaper/second_bitcoin_en.html" onclick="this.href=document.getElementById('wp-link').href">Whitepaper</a>
     <a id="repo-link2" href="https://github.com/second-btc/second-bitcoin" onclick="this.href=document.getElementById('repo-link').href">Source & verifier</a>
     <a href="whitepaper/second_bitcoin_ko.html">백서 (한국어)</a>
+    <a href="data/snapshot/">Snapshot &amp; verify the list yourself</a>
     <a href="https://basescan.org/token/0x292198f6aceb505EbaD96ba7654bAe70B57c0fdd">Token: 0x2921…0fdd (Basescan)</a>
   </div>
 
