@@ -29,7 +29,7 @@ const pct = (a, b) => b === 0n ? "0" : (Number((a * 10000n) / b) / 100).toFixed(
 const fmtDur = (s) => s <= 0 ? "closed" : s < 3600 ? `${Math.round(s / 60)} min` : s < 172800 ? `${(s / 3600).toFixed(1)} h` : `${(s / 86400).toFixed(1)} days`;
 function read(fn, args = []) { return pub.readContract({ address: cfg.token, abi: ABI, functionName: fn, args }); }
 
-let wallet = null, account = null;
+let wallet = null, account = null, cachedProof = null;
 
 async function loadStats() {
   const [supply, drawClaimed, burned, seed, start, claimWindow] = await Promise.all([
@@ -67,8 +67,8 @@ async function refreshDraw() {
     // true for ~28.5% of ANY address. Membership is only enforced inside claimDraw's Merkle check. So establish
     // membership from the published set FIRST, or an address that was never eligible is shown a share it can
     // never claim.
-    let proof = null;
-    try { proof = await fetchProof(account); } catch { proof = null; }
+    let proof = cachedProof;
+    if (!proof) { try { proof = await fetchProof(account); } catch { proof = null; } cachedProof = proof; }
     if (!proof) {
       box.innerHTML = `<b>Not in the eligible set.</b> <span class="muted">This address is not one of the ${cfg.eligibleCount ? Number(cfg.eligibleCount).toLocaleString() : "84,089"} wallets in the genesis list, so it has no share. The list and the rule that produced it are <a href="data/snapshot/">published and reproducible</a>.</span>`;
       $("draw-btn").disabled = true; return;
@@ -97,7 +97,7 @@ async function fetchProof(addr) {
 async function claimDraw() {
   try {
     $("draw-btn").disabled = true; $("draw-status").innerHTML = `<span class="muted">Fetching proof…</span>`;
-    const proof = await fetchProof(account);
+    const proof = cachedProof || await fetchProof(account);
     const hash = await wallet.writeContract({ address: cfg.token, abi: ABI, functionName: "claimDraw", args: [proof], account, chain });
     $("draw-status").innerHTML = `<span class="muted">Submitted ${short(hash)} — waiting…</span>`;
     await pub.waitForTransactionReceipt({ hash });
@@ -116,7 +116,7 @@ async function connect() {
     wallet = createWalletClient({ chain, transport: custom(window.ethereum) });
     const addrs = await wallet.requestAddresses();
     if (!addrs || !addrs.length) { box.innerHTML = `<span class="muted">No account was shared. Approve the connection in your wallet to check.</span>`; return; }
-    account = getAddress(addrs[0]);
+    account = getAddress(addrs[0]); cachedProof = null;
     try { await wallet.switchChain({ id: cfg.chainId }); }
     catch { box.innerHTML = `<span class="bad">Switch your wallet to ${cfg.chainName} (chain ${cfg.chainId}) before claiming.</span>`; }
     $("connect").textContent = short(account);
